@@ -20,8 +20,11 @@ export default function ExplorePage() {
   const [selectedCountry, setSelectedCountry] = useState('All');
 
   useEffect(() => {
-    fetchExploreData();
-  }, [selectedRegion, selectedCountry]);
+    const timer = setTimeout(() => {
+      fetchExploreData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, selectedRegion, selectedCountry]);
 
   const fetchExploreData = async () => {
     setLoading(true);

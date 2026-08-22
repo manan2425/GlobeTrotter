@@ -22,8 +22,11 @@ export default function MyTripsPage() {
   const [shareTrip, setShareTrip] = useState<any | null>(null);
 
   useEffect(() => {
-    fetchTrips();
-  }, [activeTab, sortBy]);
+    const timer = setTimeout(() => {
+      fetchTrips();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab, sortBy]);
 
   const fetchTrips = async () => {
     setLoading(true);

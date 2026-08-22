@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response, next)
     }
 
     if (search) {
-      query += ` AND (t.title LIKE ? OR t.description LIKE ?)`;
+      query += ` AND (LOWER(t.title) LIKE LOWER(?) OR LOWER(t.description) LIKE LOWER(?))`;
       params.push(`%${search}%`, `%${search}%`);
     }
 
