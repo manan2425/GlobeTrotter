@@ -1,7 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiRequest, setAuthToken, removeAuthToken, getAuthToken } from '../lib/api';
+import {
+  apiRequest,
+  setAuthToken,
+  removeAuthToken,
+  getAuthToken,
+  getStoredUser,
+  setStoredUser,
+  removeStoredUser
+} from '../lib/api';
 
 export interface User {
   id: string;
@@ -27,29 +35,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Restore cached user from localStorage immediately on mount
+  useEffect(() => {
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      setUser(storedUser);
+    }
+    refreshUser();
+  }, []);
+
   const refreshUser = async () => {
     const token = getAuthToken();
     if (!token) {
       setUser(null);
+      removeStoredUser();
       setLoading(false);
       return;
     }
 
     try {
       const res = await apiRequest<{ user: User }>('/auth/me');
-      setUser(res.user);
-    } catch (err) {
+      if (res && res.user) {
+        setUser(res.user);
+        setStoredUser(res.user);
+      }
+    } catch (err: any) {
       console.error('Failed to load user profile:', err);
-      removeAuthToken();
-      setUser(null);
+      // Only clear credentials if backend explicitly returns 401/403 or token invalid error
+      if (
+        err?.status === 401 ||
+        err?.status === 403 ||
+        err?.message?.includes('token') ||
+        err?.message?.includes('User not found')
+      ) {
+        removeAuthToken();
+        removeStoredUser();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    refreshUser();
-  }, []);
 
   const login = async (email: string, password: string) => {
     const res = await apiRequest<{ token: string; user: User }>('/auth/login', {
@@ -58,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     setAuthToken(res.token);
+    setStoredUser(res.user);
     setUser(res.user);
   };
 
@@ -68,11 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     setAuthToken(res.token);
+    setStoredUser(res.user);
     setUser(res.user);
   };
 
   const logout = () => {
     removeAuthToken();
+    removeStoredUser();
     setUser(null);
   };
 

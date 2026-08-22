@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Compass, DollarSign, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Compass, ArrowRight, ArrowLeft, Upload, ImagePlus, Check, X } from 'lucide-react';
 import { apiRequest } from '../../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/button';
@@ -12,6 +12,7 @@ import { Badge } from '../../../components/ui/badge';
 
 export default function CreateTripPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -20,7 +21,9 @@ export default function CreateTripPage() {
   const [estimatedBudget, setEstimatedBudget] = useState('30000');
   const [currency, setCurrency] = useState('INR');
   const [coverImage, setCoverImage] = useState('https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1200&q=80');
+  const [customUploadedImage, setCustomUploadedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const presetImages = [
     { title: 'Rajasthan Heritage', url: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1200&q=80' },
@@ -29,6 +32,62 @@ export default function CreateTripPage() {
     { title: 'Tokyo Metropolis', url: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=1200&q=80' },
     { title: 'Paris City Lights', url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80' }
   ];
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, WebP)');
+      return;
+    }
+
+    setUploadingImage(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1000;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const base64Url = canvas.toDataURL('image/jpeg', 0.8);
+        setCoverImage(base64Url);
+        setCustomUploadedImage(base64Url);
+        setUploadingImage(false);
+        toast.success('Custom cover photo loaded!');
+      };
+      img.onerror = () => {
+        setUploadingImage(false);
+        toast.error('Failed to process image');
+      };
+    };
+    reader.onerror = () => {
+      setUploadingImage(false);
+      toast.error('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,14 +190,18 @@ export default function CreateTripPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Estimated Total Budget</label>
-              <div className="relative">
-                <DollarSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-xs font-bold text-slate-500 pointer-events-none select-none">
+                  {currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'AED' ? 'AED' : currency === 'SGD' ? 'S$' : '₹'}
+                </span>
                 <input
                   type="number"
                   placeholder="30000"
                   value={estimatedBudget}
                   onChange={(e) => setEstimatedBudget(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 rounded-xl py-2 pl-10 pr-4 text-xs text-slate-900 focus:outline-none font-semibold"
+                  className={`w-full bg-slate-50 border border-slate-200 focus:border-sky-500 rounded-xl py-2 pr-4 text-xs text-slate-900 focus:outline-none font-semibold ${
+                    currency === 'AED' ? 'pl-12' : currency === 'SGD' ? 'pl-9' : 'pl-8'
+                  }`}
                 />
               </div>
             </div>
@@ -159,8 +222,53 @@ export default function CreateTripPage() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-2">Select Trip Cover Photo</label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-slate-700">Select Trip Cover Photo</label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" /> Upload Custom Photo
+              </button>
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleImageFileChange}
+              className="hidden"
+            />
+
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+              {/* Custom Upload Button / Card */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={`h-20 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition relative p-2 ${
+                  customUploadedImage && coverImage === customUploadedImage
+                    ? 'border-sky-500 bg-sky-50/50 text-sky-600 scale-105 shadow-sm'
+                    : 'border-slate-300 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:border-slate-400'
+                }`}
+              >
+                {uploadingImage ? (
+                  <span className="text-[10px] font-bold animate-pulse">Compressing...</span>
+                ) : customUploadedImage ? (
+                  <>
+                    <img src={customUploadedImage} alt="Uploaded preview" className="w-full h-full object-cover rounded-xl" />
+                    <span className="absolute bottom-1 left-1 right-1 text-[9px] bg-sky-600 text-white p-0.5 rounded text-center truncate font-bold shadow">
+                      Uploaded Photo
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="w-5 h-5 mb-1 text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-600">Upload Own</span>
+                  </>
+                )}
+              </div>
+
+              {/* Preset Images */}
               {presetImages.map((img, idx) => (
                 <div
                   key={idx}

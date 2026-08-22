@@ -19,6 +19,32 @@ export function removeAuthToken() {
   }
 }
 
+export function getStoredUser(): any | null {
+  if (typeof window !== 'undefined') {
+    const data = localStorage.getItem('globetrotter_user');
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+export function setStoredUser(user: any) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('globetrotter_user', JSON.stringify(user));
+  }
+}
+
+export function removeStoredUser() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('globetrotter_user');
+  }
+}
+
 export async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
 
@@ -39,7 +65,9 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || 'An unexpected error occurred');
+    const error: any = new Error(data.error || 'An unexpected error occurred');
+    error.status = response.status;
+    throw error;
   }
 
   return data as T;
