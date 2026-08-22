@@ -299,13 +299,31 @@ export async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS otps (
+        id VARCHAR(255) PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        otp_code VARCHAR(255) NOT NULL,
+        purpose VARCHAR(50) DEFAULT 'forgot_password',
+        attempts_count INTEGER DEFAULT 0,
+        expires_at VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_trips_user ON trips(user_id);
       CREATE INDEX IF NOT EXISTS idx_stops_trip ON trip_stops(trip_id);
       CREATE INDEX IF NOT EXISTS idx_trip_act_stop ON trip_activities(trip_stop_id);
       CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses(trip_id);
       CREATE INDEX IF NOT EXISTS idx_cities_country ON cities(country_id);
       CREATE INDEX IF NOT EXISTS idx_activities_city ON activities(city_id);
+      CREATE INDEX IF NOT EXISTS idx_otps_email ON otps(email);
     `);
+
+    // Migration fallback for existing Neon DB instances
+    try {
+      await pool.query('ALTER TABLE otps ALTER COLUMN expires_at TYPE VARCHAR(255) USING expires_at::text');
+    } catch (e) {
+      // Column is already VARCHAR or table newly created
+    }
 
     console.log('✅ Neon PostgreSQL Database schema initialized successfully.');
   } catch (err) {

@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Compass, User, Mail, Lock, UserPlus } from 'lucide-react';
+import { Compass, User, Mail, Lock, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
+import { PasswordRequirementsChecklist, checkPasswordComplexity } from '../../components/PasswordRequirementsChecklist';
 
 export default function SignupPage() {
   const { signup } = useAuth();
@@ -19,6 +20,9 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const passwordStatus = checkPasswordComplexity(password);
+  const isMatch = password.length > 0 && password === confirmPassword;
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -27,13 +31,13 @@ export default function SignupPage() {
       return;
     }
 
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+    if (!passwordStatus.isValid) {
+      toast.error('Password does not meet industry security requirements');
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -51,7 +55,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-xl space-y-6 relative">
+      <Card className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-8 shadow-xl space-y-6 relative">
         
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-blue-600 p-0.5 mx-auto shadow-md">
@@ -101,12 +105,19 @@ export default function SignupPage() {
               <input
                 type="password"
                 required
-                placeholder="••••••••"
+                placeholder="e.g. Secret123!"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition"
+                className={`w-full bg-slate-50 border ${
+                  password.length > 0
+                    ? passwordStatus.isValid ? 'border-emerald-400 focus:border-emerald-500' : 'border-amber-300 focus:border-amber-500'
+                    : 'border-slate-200 focus:border-sky-500'
+                } focus:bg-white rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition`}
               />
             </div>
+
+            {/* Live Password Requirements Checklist */}
+            <PasswordRequirementsChecklist password={password} />
           </div>
 
           <div>
@@ -116,20 +127,29 @@ export default function SignupPage() {
               <input
                 type="password"
                 required
-                placeholder="••••••••"
+                placeholder="Re-enter password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-sky-500 focus:bg-white rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition"
+                className={`w-full bg-slate-50 border ${
+                  confirmPassword.length > 0
+                    ? isMatch ? 'border-emerald-400 focus:border-emerald-500' : 'border-rose-300 focus:border-rose-500'
+                    : 'border-slate-200 focus:border-sky-500'
+                } focus:bg-white rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none transition`}
               />
             </div>
+            {confirmPassword.length > 0 && !isMatch && (
+              <p className="text-[11px] text-rose-500 mt-1 font-medium flex items-center gap-1">
+                <X className="w-3 h-3" /> Passwords do not match
+              </p>
+            )}
           </div>
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || !passwordStatus.isValid || !isMatch}
             variant="gradient"
             size="lg"
-            className="w-full gap-2 font-bold shadow-md"
+            className="w-full gap-2 font-bold shadow-md disabled:opacity-50"
           >
             <UserPlus className="w-4 h-4" />
             <span>{loading ? 'Creating Account...' : 'Create Account'}</span>

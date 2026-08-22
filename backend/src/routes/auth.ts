@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../db/db';
 import { authenticateToken, AuthRequest, JWT_SECRET } from '../middleware/auth';
+import { checkOtpRequestRateLimit, validatePasswordComplexity } from '../middleware/rateLimiter';
+import { sendOtpEmail } from '../lib/email';
 
 const router = Router();
 
@@ -15,7 +17,13 @@ router.post('/signup', async (req, res, next) => {
       return res.status(400).json({ error: 'Email, password, and full name are required' });
     }
 
-    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    const passCheck = validatePasswordComplexity(password);
+    if (!passCheck.valid) {
+      return res.status(400).json({ error: passCheck.message });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
     if (existing) {
       return res.status(400).json({ error: 'Email is already registered' });
     }
@@ -27,7 +35,7 @@ router.post('/signup', async (req, res, next) => {
     await db.prepare(`
       INSERT INTO users (id, email, password_hash, full_name, profile_photo, role)
       VALUES (?, ?, ?, ?, ?, 'user')
-    `).run(userId, email, passwordHash, full_name, photo);
+    `).run(userId, normalizedEmail, passwordHash, full_name, photo);
 
     await db.prepare(`
       INSERT INTO profiles (id, user_id, bio, home_city, home_country, is_public, public_trips)
@@ -40,12 +48,12 @@ router.post('/signup', async (req, res, next) => {
       VALUES (?, ?, 'Welcome to GlobeTrotter! ✈️', 'Start planning your dream multi-city journey today.', 'system')
     `).run(`notif_${Date.now()}`, userId);
 
-    const token = jwt.sign({ id: userId, email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId, email: normalizedEmail, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
 
     return res.status(201).json({
       message: 'User created successfully',
       token,
-      user: { id: userId, email, full_name, profile_photo: photo, role: 'user', currency: 'INR' }
+      user: { id: userId, email: normalizedEmail, full_name, profile_photo: photo, role: 'user', currency: 'INR' }
     });
   } catch (err) {
     next(err);
@@ -61,7 +69,8 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user: any = await db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const user: any = await db.prepare('SELECT * FROM users WHERE email = ?').get(normalizedEmail);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -90,23 +99,214 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// POST /api/auth/forgot-password
-router.post('/forgot-password', async (req, res, next) => {
+// Helper for sending OTP
+async function handleSendOtp(req: any, res: any, next: any) {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return res.status(400).json({ error: 'Email address is required' });
     }
 
-    const user = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
     if (!user) {
-      return res.status(404).json({ error: 'No account found with this email' });
+      return res.status(404).json({ error: 'No account found with this email address' });
     }
+
+    // Rate Limit Check (60s cooldown, max 3 in 15 mins)
+    const rateCheck = await checkOtpRequestRateLimit(normalizedEmail);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({ error: rateCheck.message, retryAfterSeconds: rateCheck.retryAfterSeconds });
+    }
+
+    // Generate 6-digit numeric OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpId = `otp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    // Store 15-minute expiration as timezone-immune epoch timestamp string
+    const expiresAt = (Date.now() + 15 * 60 * 1000).toString();
+
+    await db.prepare(`
+      INSERT INTO otps (id, email, otp_code, purpose, attempts_count, expires_at)
+      VALUES (?, ?, ?, 'forgot_password', 0, ?)
+    `).run(otpId, normalizedEmail, otpCode, expiresAt);
+
+    // Send email via Nodemailer (or fallback to console/simulated in dev)
+    const emailResult = await sendOtpEmail(normalizedEmail, otpCode);
 
     return res.json({
-      message: 'Password reset instructions have been sent to your email address.',
-      simulated_reset_link: `http://localhost:3000/reset-password?email=${encodeURIComponent(email)}&token=simulated_reset_token_${Date.now()}`
+      message: emailResult.simulated 
+        ? 'OTP verification code sent to your email. (Dev Mode: Simulated OTP active)'
+        : 'OTP verification code has been sent to your email address.',
+      simulated_otp: emailResult.simulated ? otpCode : undefined,
+      is_simulated: emailResult.simulated,
+      expires_in_minutes: 15,
+      email: normalizedEmail
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/auth/send-otp
+router.post('/send-otp', handleSendOtp);
+
+// POST /api/auth/forgot-password (alias for send-otp)
+router.post('/forgot-password', handleSendOtp);
+
+// Helper to parse database timestamp safely without local timezone offset bugs
+function parseExpiryTime(expiresAt: any): number {
+  if (!expiresAt) return 0;
+  if (typeof expiresAt === 'number') return expiresAt;
+  if (expiresAt instanceof Date) return expiresAt.getTime();
+
+  const str = String(expiresAt).trim();
+  if (/^\d+$/.test(str)) return parseInt(str, 10);
+
+  // If ISO date string lacks explicit timezone offset (e.g. PostgreSQL "YYYY-MM-DD HH:MM:SS")
+  if (!str.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(str)) {
+    const utcStr = str.replace(' ', 'T') + 'Z';
+    const parsed = new Date(utcStr).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  const parsed = new Date(str).getTime();
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+// POST /api/auth/verify-otp
+router.post('/verify-otp', async (req, res, next) => {
+  try {
+    const { email, otp_code } = req.body;
+    if (!email || !otp_code) {
+      return res.status(400).json({ error: 'Email and 6-digit OTP code are required' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const cleanCode = otp_code.trim();
+
+    // Fetch latest active OTP for this email
+    const otpRecord: any = await db.prepare(`
+      SELECT * FROM otps 
+      WHERE email = ? 
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `).get(normalizedEmail);
+
+    if (!otpRecord) {
+      return res.status(400).json({ error: 'No OTP code requested for this email' });
+    }
+
+    // Check max verification attempts (rate limit / brute force protection)
+    if (otpRecord.attempts_count >= 5) {
+      return res.status(429).json({ 
+        error: 'Too many incorrect OTP attempts. For security reasons, please request a new OTP code.' 
+      });
+    }
+
+    // Check expiration using timezone-safe parser
+    const expiryTime = parseExpiryTime(otpRecord.expires_at);
+    if (Date.now() > expiryTime) {
+      return res.status(400).json({ error: 'OTP code has expired. Please request a new OTP.' });
+    }
+
+    // Check matching code
+    if (otpRecord.otp_code !== cleanCode) {
+      const newAttempts = otpRecord.attempts_count + 1;
+      await db.prepare(`
+        UPDATE otps SET attempts_count = ? WHERE id = ?
+      `).run(newAttempts, otpRecord.id);
+
+      const remaining = 5 - newAttempts;
+      return res.status(400).json({ 
+        error: `Invalid OTP code. ${remaining > 0 ? `${remaining} attempts remaining.` : 'Please request a new OTP.'}` 
+      });
+    }
+
+    // OTP Verified successfully! Generate temporary reset token
+    const resetToken = jwt.sign(
+      { email: normalizedEmail, otpId: otpRecord.id, purpose: 'password_reset' }, 
+      JWT_SECRET, 
+      { expiresIn: '15m' }
+    );
+
+    return res.json({
+      message: 'OTP verified successfully.',
+      verified: true,
+      reset_token: resetToken,
+      email: normalizedEmail
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { email, otp_code, reset_token, new_password } = req.body;
+
+    if (!email || !new_password) {
+      return res.status(400).json({ error: 'Email and new password are required' });
+    }
+
+    // Validate new password complexity (minimum 8 chars)
+    const passCheck = validatePasswordComplexity(new_password);
+    if (!passCheck.valid) {
+      return res.status(400).json({ error: passCheck.message });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Verify OTP or reset_token
+    let verified = false;
+
+    if (reset_token) {
+      try {
+        const decoded: any = jwt.verify(reset_token, JWT_SECRET);
+        if (decoded.email === normalizedEmail && decoded.purpose === 'password_reset') {
+          verified = true;
+        }
+      } catch (err) {
+        // Fallback to checking otp_code
+      }
+    }
+
+    if (!verified && otp_code) {
+      const cleanCode = otp_code.trim();
+      const otpRecord: any = await db.prepare(`
+        SELECT * FROM otps WHERE email = ? ORDER BY created_at DESC LIMIT 1
+      `).get(normalizedEmail);
+
+      if (otpRecord && otpRecord.otp_code === cleanCode) {
+        const expiryTime = parseExpiryTime(otpRecord.expires_at);
+        if (Date.now() <= expiryTime && otpRecord.attempts_count < 5) {
+          verified = true;
+        }
+      }
+    }
+
+    if (!verified) {
+      return res.status(400).json({ error: 'Invalid or expired OTP / reset authorization token. Please verify your OTP again.' });
+    }
+
+    // Check user existence
+    const user: any = await db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    // Update password
+    const newHash = bcrypt.hashSync(new_password, 10);
+    await db.prepare(`
+      UPDATE users 
+      SET password_hash = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE email = ?
+    `).run(newHash, normalizedEmail);
+
+    // Delete used OTPs for this email
+    await db.prepare('DELETE FROM otps WHERE email = ?').run(normalizedEmail);
+
+    return res.json({ message: 'Password has been reset successfully. You can now log in with your new password.' });
   } catch (err) {
     next(err);
   }

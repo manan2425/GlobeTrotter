@@ -106,8 +106,9 @@ hackthon/
 | Route Path | Description | Key Features & Functionality | Associated Backend APIs |
 | :--- | :--- | :--- | :--- |
 | `/` | Landing Page | Hero section, featured multi-city routes, platform features showcase, call-to-action | `GET /api/destinations`, `GET /api/templates` |
-| `/login` | Login Page | User login form with email & password | `POST /api/auth/login` |
-| `/signup` | Signup Page | Account registration with full name, email & password | `POST /api/auth/signup` |
+| `/login` | Login Page | User login form with email & password, interactive OTP password reset modal | `POST /api/auth/login`, `POST /api/auth/send-otp`, `POST /api/auth/verify-otp`, `POST /api/auth/reset-password` |
+| `/signup` | Signup Page | Account registration with full name, email & 8+ character password validation | `POST /api/auth/signup` |
+| `/reset-password` | Reset Password Page | Standalone page for resetting account password using 6-digit OTP verification | `POST /api/auth/send-otp`, `POST /api/auth/verify-otp`, `POST /api/auth/reset-password` |
 | `/dashboard` | User Dashboard | Overview of upcoming/ongoing trips, user quick stats, saved destinations, quick action cards | `GET /api/auth/me`, `GET /api/trips`, `GET /api/destinations/saved/me` |
 | `/trips` | Trips Manager | Grid view of user's trips, status filters (*Upcoming, Ongoing, Completed, Draft*), search bar, budget sorting | `GET /api/trips`, `DELETE /api/trips/:id`, `POST /api/trips/:id/duplicate` |
 | `/trips/new` | Create Trip Wizard | Multi-step form: trip title, start/end dates, estimated budget, currency, city multi-selector | `POST /api/trips`, `GET /api/destinations` |
@@ -146,6 +147,7 @@ hackthon/
 | `user_achievements` | `id` (VARCHAR) | `user_id` (FK `users.id`), `achievement_id` (FK `achievements.id`) | Gamification user unlocks |
 | `saved_destinations` | `id` (VARCHAR) | `user_id` (FK `users.id`), `city_id` (FK `cities.id`) | User saved city wishlist |
 | `notifications` | `id` (VARCHAR) | `user_id` (FK `users.id`), `title`, `message`, `type`, `is_read`, `link_url` | System and trip alert notifications |
+| `otps` | `id` (VARCHAR) | `email`, `otp_code`, `purpose`, `attempts_count`, `expires_at`, `created_at` | 6-Digit OTP verification tokens with 10-minute expiry and attempt tracking |
 
 ---
 
