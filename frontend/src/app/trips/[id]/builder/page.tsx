@@ -238,9 +238,9 @@ export default function ItineraryBuilderPage() {
             <Sparkles className="w-4 h-4 text-indigo-500" /> AI Assistant
           </Button>
           
-          <Link href={`/trips/${tripId}/optimize`}>
-            <Button variant="outline" size="sm" className="gap-1.5 font-bold border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100">
-              <Sparkles className="w-4 h-4 text-amber-500" /> Optimize Trip
+          <Link href={`/trips/${tripId}/budget`}>
+            <Button variant="outline" size="sm" className="gap-1.5 font-bold border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100">
+              <DollarSign className="w-4 h-4 text-emerald-600" /> Budget Tracker
             </Button>
           </Link>
 
