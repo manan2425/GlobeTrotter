@@ -8,41 +8,51 @@ const router = Router();
 // GET /api/admin/dashboard
 router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Response, next) => {
   try {
-    const usersCount: any = await db.prepare('SELECT COUNT(*) as cnt FROM users').get();
-    const tripsCount: any = await db.prepare('SELECT COUNT(*) as cnt FROM trips').get();
-    const sharedTripsCount: any = await db.prepare("SELECT COUNT(*) as cnt FROM trips WHERE visibility = 'Public'").get();
-    const avgBudget: any = await db.prepare('SELECT AVG(estimated_budget) as avg_b FROM trips').get();
-    const citiesCount: any = await db.prepare('SELECT COUNT(*) as cnt FROM cities').get();
-    const activitiesCount: any = await db.prepare('SELECT COUNT(*) as cnt FROM activities').get();
-    const templatesCount: any = await db.prepare('SELECT COUNT(*) as cnt FROM trip_templates').get();
-    const countriesCount: any = await db.prepare('SELECT COUNT(*) as cnt FROM countries').get();
+    const usersCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM users').get()) || { cnt: 0 };
+    const tripsCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM trips').get()) || { cnt: 0 };
+    const sharedTripsCount: any = (await db.prepare("SELECT COUNT(*) as cnt FROM trips WHERE visibility = 'Public'").get()) || { cnt: 0 };
+    const avgBudget: any = (await db.prepare('SELECT AVG(estimated_budget) as avg_b FROM trips').get()) || { avg_b: 28500 };
+    const citiesCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM cities').get()) || { cnt: 0 };
+    const activitiesCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM activities').get()) || { cnt: 0 };
+    const templatesCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM trip_templates').get()) || { cnt: 0 };
+    const countriesCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM countries').get()) || { cnt: 0 };
 
-    const popularCities = await db.prepare(`
-      SELECT c.name as city_name, c.country_name, COUNT(ts.id) as trip_stops_count
-      FROM cities c
-      LEFT JOIN trip_stops ts ON c.id = ts.city_id
-      GROUP BY c.id, c.name, c.country_name
-      ORDER BY trip_stops_count DESC
-      LIMIT 6
-    `).all();
+    let popularCities: any[] = [];
+    try {
+      popularCities = await db.prepare(`
+        SELECT c.name as city_name, c.country_name, COUNT(ts.id) as trip_stops_count
+        FROM cities c
+        LEFT JOIN trip_stops ts ON c.id = ts.city_id
+        GROUP BY c.id, c.name, c.country_name
+        ORDER BY trip_stops_count DESC
+        LIMIT 6
+      `).all();
+    } catch (e) {
+      popularCities = [];
+    }
 
-    const activityCategoryBreakdown = await db.prepare(`
-      SELECT category, COUNT(*) as count
-      FROM activities
-      GROUP BY category
-    `).all();
+    let activityCategoryBreakdown: any[] = [];
+    try {
+      activityCategoryBreakdown = await db.prepare(`
+        SELECT category, COUNT(*) as count
+        FROM activities
+        GROUP BY category
+      `).all();
+    } catch (e) {
+      activityCategoryBreakdown = [];
+    }
 
     return res.json({
       kpis: {
-        total_users: usersCount ? usersCount.cnt : 0,
-        total_trips: tripsCount ? tripsCount.cnt : 0,
-        active_users: Math.max(1, usersCount ? usersCount.cnt : 0),
-        shared_trips: sharedTripsCount ? sharedTripsCount.cnt : 0,
-        total_cities: citiesCount ? citiesCount.cnt : 0,
-        total_activities: activitiesCount ? activitiesCount.cnt : 0,
-        total_templates: templatesCount ? templatesCount.cnt : 0,
-        total_countries: countriesCount ? countriesCount.cnt : 0,
-        avg_trip_budget: Math.round(avgBudget ? avgBudget.avg_b || 28500 : 28500)
+        total_users: Number(usersCount.cnt || 0),
+        total_trips: Number(tripsCount.cnt || 0),
+        active_users: Math.max(1, Number(usersCount.cnt || 0)),
+        shared_trips: Number(sharedTripsCount.cnt || 0),
+        total_cities: Number(citiesCount.cnt || 0),
+        total_activities: Number(activitiesCount.cnt || 0),
+        total_templates: Number(templatesCount.cnt || 0),
+        total_countries: Number(countriesCount.cnt || 0),
+        avg_trip_budget: Math.round(Number(avgBudget.avg_b || 28500))
       },
       popular_cities: popularCities,
       activity_category_breakdown: activityCategoryBreakdown,
@@ -54,6 +64,7 @@ router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Respon
       ]
     });
   } catch (err) {
+    console.error('Error in /admin/dashboard:', err);
     next(err);
   }
 });

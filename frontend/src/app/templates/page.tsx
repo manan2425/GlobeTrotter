@@ -35,7 +35,7 @@ export default function TemplatesPage() {
       toast.success(`Created new trip from ${title}!`);
       router.push(`/trips/${res.tripId}/builder`);
     } catch (err: any) {
-      toast.error('Failed to create trip from template');
+      toast.error(err.message || 'Failed to create trip from template');
     }
   };
 
