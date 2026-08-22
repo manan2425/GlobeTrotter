@@ -237,6 +237,30 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response,
   }
 });
 
+// POST /api/trips/:id/accommodations
+router.post('/:id/accommodations', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+  try {
+    const tripId = req.params.id;
+    const { trip_stop_id, name, check_in, check_out, cost_per_night, total_cost } = req.body;
+
+    const trip: any = await db.prepare('SELECT user_id FROM trips WHERE id = ?').get(tripId);
+    if (!trip) {
+      return res.status(404).json({ error: 'Trip not found' });
+    }
+
+    const accId = `acc_${Date.now()}`;
+    await db.prepare(`
+      INSERT INTO accommodations (id, trip_id, trip_stop_id, name, check_in, check_out, cost_per_night, total_cost)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(accId, tripId, trip_stop_id, name, check_in, check_out, cost_per_night || 0, total_cost || 0);
+
+    const createdAcc = await db.prepare('SELECT * FROM accommodations WHERE id = ?').get(accId);
+    return res.status(201).json(createdAcc);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/trips/:id/duplicate
 router.post('/:id/duplicate', authenticateToken, async (req: AuthRequest, res: Response, next) => {
   try {

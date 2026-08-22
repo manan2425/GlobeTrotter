@@ -28,7 +28,7 @@ router.get('/trips/:id/weather', async (req, res, next) => {
         rain_probability_pct: isRainy ? 85 : 10,
         humidity_pct: isRainy ? 78 : 45,
         weather_icon: isRainy ? '🌧️' : (index % 2 === 0 ? '☀️' : '⛅'),
-        warning_alert: isRainy ? '🌧️ Rain expected tomorrow in Udaipur. Consider moving outdoor activities to Day 3!' : null
+        warning_alert: isRainy ? `🌧️ Rain expected tomorrow in ${stop.city_name}. Consider moving outdoor activities to Day 3!` : null
       };
     });
 

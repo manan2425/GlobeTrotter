@@ -22,32 +22,27 @@ router.post('/travel-assistant', async (req, res, next) => {
       tripContext = await db.prepare('SELECT * FROM trips WHERE id = ?').get(trip_id);
     }
 
-    if (pLower.includes('5-day') || pLower.includes('rajasthan') || pLower.includes('under') || pLower.includes('budget') || pLower.includes('plan')) {
-      responseText = `Based on your request, I've curated a high-value 5-Day Rajasthan Heritage Itinerary under ₹25,000:\n\n` +
-        `📍 **Stop 1: Udaipur (2 Days)** — City Palace, Lake Pichola Sunset Boat Cruise & Sajjangarh Monsoon Palace.\n` +
-        `📍 **Stop 2: Jodhpur (1 Day)** — Mehrangarh Fort Zipline & Blue City Heritage Walk.\n` +
-        `📍 **Stop 3: Jaipur (2 Days)** — Amber Fort Safari, Hawa Mahal rooftop cafe & Chokhi Dhani Dinner.\n\n` +
-        `💡 **Estimated Total Cost**: ₹22,400 (Savings of ₹2,600 reserved for shopping!).`;
-
-      suggestedActions = [
-        { label: 'Apply This Itinerary', action: 'create_trip', data: { title: '5-Day Rajasthan Special', cities: ['city_udaipur', 'city_jodhpur', 'city_jaipur'], budget: 25000 } }
-      ];
-    } else if (pLower.includes('expensive') || pLower.includes('cheaper') || pLower.includes('save money') || pLower.includes('remove')) {
-      responseText = `Here are 3 smart ways to optimize your budget:\n\n` +
-        `1. 💡 **Accommodation Optimization**: Swap luxury heritage suites for boutique homestays in Udaipur and Jaipur to save ~₹4,200.\n` +
-        `2. 🚌 **Inter-city Transit**: Take the Vande Bharat Express between Ahmedabad, Udaipur & Jaipur instead of private cabs to save ~₹3,500.\n` +
-        `3. 🎟️ **Activity Combo Passes**: Purchase the Rajasthan Monument Composite Pass for access to 8 forts at a 40% discount.`;
-    } else if (pLower.includes('jaipur') || pLower.includes('activities in jaipur')) {
-      responseText = `Top recommended activities in Jaipur for your trip:\n\n` +
-        `• **Amber Fort & Sheesh Mahal** (Duration: 3 hrs, ₹500)\n` +
-        `• **Hawa Mahal & Rooftop Tea** (Duration: 1 hr, ₹200)\n` +
-        `• **City Palace & Jantar Mantar** (Duration: 2 hrs, ₹400)\n` +
-        `• **Chokhi Dhani Folk Dinner** (Duration: 3 hrs, ₹1,100)`;
+    if (pLower.includes('plan') || pLower.includes('trip') || pLower.includes('itinerary')) {
+      responseText = `Based on your request, I can curate a personalized itinerary for you. Tell me more about your destination, budget, and travel dates!\n\n` +
+        `For example, you can say: "Plan a 5-day trip to Paris under €2000" or "Suggest a budget-friendly weekend getaway in India."`;
+    } else if (pLower.includes('expensive') || pLower.includes('cheaper') || pLower.includes('save money') || pLower.includes('budget')) {
+      responseText = `Here are 3 smart ways to optimize your travel budget:\n\n` +
+        `1. 💡 **Accommodation Optimization**: Consider booking boutique homestays or highly-rated hostels instead of central luxury hotels to save significantly.\n` +
+        `2. 🚌 **Public Transit**: Use regional trains or local buses instead of private cabs between cities.\n` +
+        `3. 🎟️ **Activity Combo Passes**: Look for city tourist passes that bundle major attractions at a discount.`;
+    } else if (pLower.includes('activities') || pLower.includes('recommend') || pLower.includes('things to do')) {
+      responseText = `Here are some popular types of activities you can add to your itinerary:\n\n` +
+        `• **Cultural Heritage Tours**\n` +
+        `• **Local Food & Street Markets**\n` +
+        `• **Adventure & Outdoor Excursions**\n` +
+        `• **Museums & Art Galleries**\n\n` +
+        `Tell me your specific destination and I'll give you exact recommendations!`;
     } else if (pLower.includes('adventure')) {
-      responseText = `High-energy adventure recommendations added for your route:\n\n` +
-        `• 🧗 **Mehrangarh Fort Ziplining (Flying Fox)** — Jodhpur (₹1,800)\n` +
-        `• 🚤 **Lake Pichola Speed Boat & Kayaking** — Udaipur (₹800)\n` +
-        `• 🎈 **Hot Air Balloon Safari over Amber Fort** — Jaipur (₹8,500)`;
+      responseText = `High-energy adventure recommendations for any destination:\n\n` +
+        `• 🧗 **Ziplining and Rock Climbing**\n` +
+        `• 🚤 **Kayaking or Speed Boat Tours**\n` +
+        `• 🎈 **Hot Air Balloon Safari**\n\n` +
+        `Let me know where you are heading so I can find local adventure spots for you!`;
     } else {
       responseText = `GlobeTrotter AI Assistant at your service! ✈️ I've analyzed your travel preferences.\n\n` +
         `You can ask me to suggest destinations, optimize your current itinerary routes, suggest budget reduction strategies, or generate an instant packing list!`;
@@ -85,23 +80,26 @@ router.post('/optimize-itinerary', async (req, res, next) => {
     const recommendations: any[] = [];
 
     if (stops.length >= 3) {
+      const stopNames = stops.map((s: any) => s.city_name).join(' → ');
       recommendations.push({
         id: 'rec_route_1',
         type: 'route_optimization',
         icon: '🚗',
         title: 'Optimal Travel Route Detected',
-        description: 'Reordering stops to sequence Udaipur → Jodhpur → Jaipur reduces total highway transit time by 4.2 hours (~185 km saved).',
-        savings: '4.2 hrs travel time',
+        description: `Reordering your stops to sequence ${stopNames} optimally could reduce total transit time and save on travel costs.`,
+        savings: 'Optimized travel time',
         impact_score: 'High'
       });
     }
+
+    const firstCity = stops.length > 0 ? stops[0].city_name : 'your destination';
 
     recommendations.push({
       id: 'rec_time_2',
       type: 'schedule_conflict',
       icon: '⏰',
       title: 'Schedule Buffer Optimization',
-      description: 'Day 2 has 2 outdoor activities scheduled close to sunset. Shifting Sajjangarh Palace to 16:00 creates a relaxed sunset view.',
+      description: 'You have outdoor activities scheduled close to sunset. Shifting them slightly earlier creates a more relaxed experience and avoids twilight rush.',
       savings: 'Prevents rush & overlap',
       impact_score: 'Medium'
     });
@@ -111,8 +109,8 @@ router.post('/optimize-itinerary', async (req, res, next) => {
       type: 'budget_saving',
       icon: '💡',
       title: 'Smart Activity Saver',
-      description: 'Booking the Udaipur Heritage Pass combines City Palace & Lake Cruise tickets to save ₹450 per traveler.',
-      savings: '₹450 / person',
+      description: `Look for local tourist passes in ${firstCity} to combine major attraction tickets and save money per traveler.`,
+      savings: 'Up to 20% savings',
       impact_score: 'Medium'
     });
 
@@ -171,7 +169,7 @@ router.post('/packing-list', (req, res) => {
   ];
 
   return res.json({
-    destination: destination_name || 'Rajasthan Trip',
+    destination: destination_name || 'Your Trip',
     duration: duration_days || 6,
     categories: packingList
   });
