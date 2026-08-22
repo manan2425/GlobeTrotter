@@ -86,7 +86,7 @@ export default function AIAssistantModal({ tripId, isOpen, onClose }: { tripId?:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-900/40 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-end bg-slate-950/80 backdrop-blur-md p-4">
       <div className="w-full max-w-lg h-[90vh] bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
         
         {/* Header */}

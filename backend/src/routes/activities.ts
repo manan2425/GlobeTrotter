@@ -7,7 +7,7 @@ const router = Router();
 // GET /api/activities
 router.get('/activities', async (req, res, next) => {
   try {
-    const { city_id, category, search } = req.query;
+    const { city_id, category, search, min_cost, max_cost, max_duration, sort_by } = req.query;
 
     let query = `SELECT a.*, c.name as city_name, c.country_name FROM activities a JOIN cities c ON a.city_id = c.id WHERE 1=1`;
     const params: any[] = [];
@@ -27,7 +27,31 @@ router.get('/activities', async (req, res, next) => {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    query += ` ORDER BY a.rating DESC, a.name ASC`;
+    if (min_cost) {
+      query += ` AND a.estimated_cost >= ?`;
+      params.push(Number(min_cost));
+    }
+
+    if (max_cost) {
+      query += ` AND a.estimated_cost <= ?`;
+      params.push(Number(max_cost));
+    }
+
+    if (max_duration) {
+      query += ` AND a.duration_minutes <= ?`;
+      params.push(Number(max_duration));
+    }
+
+    if (sort_by === 'cost_asc') {
+      query += ` ORDER BY a.estimated_cost ASC, a.rating DESC`;
+    } else if (sort_by === 'cost_desc') {
+      query += ` ORDER BY a.estimated_cost DESC, a.rating DESC`;
+    } else if (sort_by === 'duration') {
+      query += ` ORDER BY a.duration_minutes ASC, a.rating DESC`;
+    } else {
+      query += ` ORDER BY a.rating DESC, a.name ASC`;
+    }
+
     const activities = await db.prepare(query).all(...params);
     return res.json(activities);
   } catch (err) {

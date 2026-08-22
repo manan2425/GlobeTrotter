@@ -17,7 +17,7 @@ export default function MobileNav() {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-nav border-t border-slate-200/80 px-4 py-2 flex items-center justify-around shadow-lg">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass-nav border-t border-slate-200/80 px-4 py-2 flex items-center justify-around shadow-lg">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;

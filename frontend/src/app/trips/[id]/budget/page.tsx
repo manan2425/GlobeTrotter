@@ -275,7 +275,7 @@ export default function BudgetDashboardPage() {
 
       {/* Record Expense Modal */}
       {showAddExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">Record Actual Expense</h3>
             
