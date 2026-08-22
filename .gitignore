@@ -17,6 +17,9 @@ backend/*.sqlite
 *.log
 .DS_Store
 
+**/__pycache__/
+*.py[cod]
+*$py.class
 # Environment variables
 .env
 .env.local
