@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Compass, MapPin, Calendar, Clock, DollarSign, Sparkles,
-  Share2, Edit, Luggage, ArrowLeft, Layers, CheckCircle2, Circle
+  Share2, Edit, Luggage, ArrowLeft, Layers, CheckCircle2, Circle,
+  Building2, MessageSquare, Bot, ArrowRight
 } from 'lucide-react';
 import { apiRequest } from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -28,6 +29,7 @@ export default function TripViewPage() {
   const [trip, setTrip] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'timeline' | 'calendar'>('timeline');
+  const [selectedStopId, setSelectedStopId] = useState<string | undefined>(undefined);
 
   // Modals
   const [showPackingModal, setShowPackingModal] = useState(false);
@@ -42,6 +44,9 @@ export default function TripViewPage() {
     try {
       const data = await apiRequest<any>(`/trips/${tripId}`);
       setTrip(data);
+      if (data.stops && data.stops.length > 0 && !selectedStopId) {
+        setSelectedStopId(data.stops[0].id);
+      }
     } catch (err: any) {
       toast.error('Failed to load trip');
     } finally {
@@ -56,7 +61,7 @@ export default function TripViewPage() {
         body: JSON.stringify({ is_completed: !currentStatus })
       });
       fetchTrip();
-      toast.success(!currentStatus ? 'Activity marked as completed! 🎉' : 'Activity status reset');
+      toast.success(!currentStatus ? 'Activity marked completed! 🎉' : 'Activity status updated');
     } catch (err: any) {
       toast.error('Failed to update activity status');
     }
@@ -64,9 +69,9 @@ export default function TripViewPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center text-slate-400 space-y-3 animate-pulse">
-        <Compass className="w-8 h-8 text-sky-500 animate-spin mx-auto" />
-        <div>Loading Itinerary Experience...</div>
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-400 space-y-4 animate-pulse">
+        <Compass className="w-10 h-10 text-sky-500 animate-spin mx-auto" />
+        <div className="text-sm font-bold text-slate-600">Loading Itinerary Workspace...</div>
       </div>
     );
   }
@@ -76,22 +81,30 @@ export default function TripViewPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
-      {/* Top Banner / Hero Card */}
-      <div className="relative h-64 sm:h-80 rounded-3xl overflow-hidden shadow-xl border border-slate-200">
-        <img src={trip.cover_image} alt={trip.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
+      {/* Hero Header Banner */}
+      <div className="relative h-72 sm:h-96 rounded-3xl overflow-hidden shadow-2xl border border-slate-200/90 group">
+        <img
+          src={trip.cover_image || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1600&q=80'}
+          alt={trip.title}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-slate-950/20" />
 
-        <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-          <Link href="/trips" className="bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-800 hover:text-slate-950 flex items-center gap-1 border border-slate-200 shadow-sm">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to My Trips
+        {/* Top Control Bar */}
+        <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 z-10">
+          <Link
+            href="/trips"
+            className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-xs font-extrabold text-slate-800 hover:bg-white hover:text-slate-950 flex items-center gap-1.5 border border-white/80 shadow-md"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to My Trips
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => setShowPackingModal(true)}
               variant="amber"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 shadow-md font-bold text-xs"
             >
               <Luggage className="w-4 h-4" /> AI Packing List
             </Button>
@@ -99,77 +112,100 @@ export default function TripViewPage() {
               onClick={() => setShowShareModal(true)}
               variant="secondary"
               size="sm"
-              className="gap-1.5 bg-white/90 text-slate-900 hover:bg-white border-slate-200"
+              className="gap-1.5 bg-white/90 backdrop-blur-md text-slate-900 hover:bg-white border-white/80 shadow-md font-bold text-xs"
             >
               <Share2 className="w-4 h-4 text-emerald-600" /> Share
             </Button>
             <Link href={`/trips/${tripId}/builder`}>
-              <Button variant="default" size="sm" className="gap-1.5">
+              <Button variant="default" size="sm" className="gap-1.5 shadow-md font-bold text-xs">
                 <Edit className="w-4 h-4" /> Edit Builder
               </Button>
             </Link>
           </div>
         </div>
 
-        <div className="absolute bottom-6 left-6 right-6 text-white space-y-2 z-10">
-          <div className="flex items-center gap-2">
-            <Badge variant="default" className="bg-sky-500 text-white border-none">{trip.status}</Badge>
-            <span className="text-xs text-slate-200 font-semibold">{trip.start_date} → {trip.end_date}</span>
+        {/* Bottom Banner Title */}
+        <div className="absolute bottom-6 left-6 right-6 text-white space-y-2 z-10 max-w-4xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="default" className="bg-sky-500 text-white font-extrabold px-3 py-1 border-none shadow-md">
+              {trip.status}
+            </Badge>
+            <span className="text-xs text-slate-200 font-bold bg-slate-900/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+              {trip.start_date} → {trip.end_date}
+            </span>
+            <span className="text-xs text-emerald-300 font-bold bg-slate-900/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+              Budget: ₹{(trip.estimated_budget || 0).toLocaleString()}
+            </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">{trip.title}</h1>
-          <p className="text-xs sm:text-sm text-slate-200 max-w-2xl">{trip.description}</p>
+
+          <h1 className="text-3xl sm:text-5xl font-black tracking-tight drop-shadow-md">{trip.title}</h1>
+          {trip.description && (
+            <p className="text-xs sm:text-sm text-slate-200/90 max-w-2xl line-clamp-2 drop-shadow">{trip.description}</p>
+          )}
         </div>
       </div>
 
-      {/* Navigation Sub-bar (Timeline vs Calendar Toggle, Budget & Optimizer Links) */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-1">
+      {/* Sub-navigation Controls (Timeline vs Calendar Toggle, Budget & Optimizer) */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/90 backdrop-blur-md p-3.5 rounded-3xl border border-slate-200/90 shadow-md">
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/60">
           <button
             onClick={() => setViewMode('timeline')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              viewMode === 'timeline' ? 'bg-sky-500 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-2 ${
+              viewMode === 'timeline'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <Layers className="w-4 h-4" /> Timeline Mode
+            <Layers className="w-4 h-4" /> Day Timeline Mode
           </button>
           <button
             onClick={() => setViewMode('calendar')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              viewMode === 'calendar' ? 'bg-sky-500 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-2 ${
+              viewMode === 'calendar'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <Calendar className="w-4 h-4" /> Calendar Mode
+            <Calendar className="w-4 h-4" /> Calendar View Mode
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Link href={`/trips/${tripId}/budget`}>
-            <Button variant="outline" size="sm" className="gap-1.5 text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100 font-bold">
-              <DollarSign className="w-4 h-4" /> Budget Dashboard
-            </Button>
-          </Link>
-          <Link href={`/trips/${tripId}/optimize`}>
-            <Button variant="outline" size="sm" className="gap-1.5 text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100 font-bold">
-              <Sparkles className="w-4 h-4 text-amber-500" /> Optimize Trip
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-emerald-700 bg-emerald-50/80 border-emerald-200 hover:bg-emerald-100 font-extrabold text-xs shadow-2xs"
+            >
+              <DollarSign className="w-4 h-4 text-emerald-600" /> Open Budget Tracker
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Weather Widget */}
+      {/* Live Open-Meteo Weather Widget */}
       <WeatherWidget tripId={tripId} />
 
-      {/* Main Content Layout: Interactive Map + Timeline/Calendar Stream */}
+      {/* Main Content Layout: Interactive Route Map + Itinerary Stream */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column: Interactive Map */}
+        {/* Left Column: Interactive Map with Unsplash API images */}
         <div className="lg:col-span-1 space-y-6">
-          <Card className="bg-white border-slate-200 p-4 shadow-sm space-y-3">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-sky-500" /> Interactive Route Map
-            </h3>
+          <Card className="bg-white border-slate-200/90 p-5 sm:p-6 shadow-md space-y-4 rounded-3xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 pt-1">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-sky-500 shrink-0" /> Interactive Route Map
+              </h3>
+              <Badge variant="outline" className="text-[10px] bg-sky-50 text-sky-700 border-sky-200 font-extrabold px-2.5 py-0.5 rounded-full shrink-0">
+                Unsplash Photos
+              </Badge>
+            </div>
             
-            <TripMap stops={trip.stops || []} />
+            <TripMap
+              stops={trip.stops || []}
+              selectedStopId={selectedStopId}
+              onSelectStop={(stopId) => setSelectedStopId(stopId)}
+            />
           </Card>
 
           {/* Collaboration & Comments */}
@@ -184,62 +220,125 @@ export default function TripViewPage() {
         {/* Right Column: Timeline / Calendar View */}
         <div className="lg:col-span-2 space-y-6">
           {viewMode === 'timeline' ? (
+            /* Day-wise Layout with City Headers and Activity Blocks */
             <div className="space-y-6">
               {trip.stops?.map((stop: any, index: number) => {
                 const stopActivities = trip.activities?.filter((a: any) => a.trip_stop_id === stop.id) || [];
+                const stopHotels = trip.accommodations?.filter((h: any) => h.trip_stop_id === stop.id) || [];
+                const dayCost = stopActivities.reduce((sum: number, act: any) => sum + (Number(act.cost) || 0), 0);
+
+                const isSelected = stop.id === selectedStopId;
 
                 return (
-                  <Card key={stop.id} className="bg-white border-slate-200 p-6 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <Card
+                    key={stop.id}
+                    className={`bg-white border transition-all duration-300 p-6 shadow-md rounded-3xl space-y-5 ${
+                      isSelected ? 'border-sky-500 ring-2 ring-sky-500/20 shadow-lg' : 'border-slate-200/90'
+                    }`}
+                  >
+                    {/* City Header matching Image 1 */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
                       <div>
-                        <div className="text-xs font-bold text-sky-600 uppercase tracking-wider">Day {index + 1}</div>
-                        <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                          {stop.city_name} <span className="text-xs font-medium text-slate-500">({stop.country_name})</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-sky-600 uppercase tracking-wider bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
+                            Day {index + 1}
+                          </span>
+                          {stop.arrival_date && (
+                            <span className="text-xs text-slate-500 font-bold flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" /> {stop.arrival_date}
+                              {stop.departure_date && <span> → {stop.departure_date}</span>}
+                            </span>
+                          )}
+                        </div>
+
+                        <h2 className="text-2xl font-black text-slate-900 mt-1 flex items-center gap-2">
+                          {stop.city_name}
+                          {stop.country_name && (
+                            <span className="text-xs font-semibold text-slate-500">({stop.country_name})</span>
+                          )}
                         </h2>
                       </div>
-                      <div className="text-xs text-slate-600 font-bold bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-                        {stop.arrival_date}
+
+                      <div className="flex items-center gap-2.5 self-start sm:self-center">
+                        <div className="text-xs text-emerald-700 font-extrabold bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                          <DollarSign className="w-3.5 h-3.5" /> Day Total: ₹{dayCost.toLocaleString()}
+                        </div>
+
+                        {stopHotels.length > 0 && (
+                          <div className="text-xs text-amber-700 font-bold bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5" /> {stopHotels[0].name}
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Timeline Activity Cards */}
-                    <div className="space-y-3 relative pl-4 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                    {/* Activity Blocks with Time and Cost matching Image 1 */}
+                    <div className="space-y-3 relative pl-5 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                       {stopActivities.length === 0 ? (
-                        <div className="text-xs text-slate-400 italic py-2">No specific activities scheduled yet.</div>
+                        <div className="p-4 bg-slate-50 rounded-2xl text-xs text-slate-400 italic flex items-center justify-between border border-slate-100">
+                          <span>No specific activities scheduled for this day yet.</span>
+                          <Link href={`/trips/${tripId}/builder`} className="text-sky-600 font-bold hover:underline">
+                            + Add Activities in Builder
+                          </Link>
+                        </div>
                       ) : (
                         stopActivities.map((act: any) => (
-                          <div key={act.id} className="relative bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="absolute -left-[17px] top-4 w-2.5 h-2.5 rounded-full bg-sky-500 ring-4 ring-white" />
+                          <div
+                            key={act.id}
+                            className={`relative bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/90 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200 ${
+                              act.is_completed ? 'opacity-70 bg-slate-100/50' : ''
+                            }`}
+                          >
+                            {/* Dot on timeline stem */}
+                            <div
+                              className={`absolute -left-[21px] top-5 w-3 h-3 rounded-full border-2 border-white shadow ${
+                                act.is_completed ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-sky-500 ring-2 ring-sky-300'
+                              }`}
+                            />
                             
-                            <div className="flex items-center gap-3">
-                              <div className="w-14 h-12 rounded-xl bg-slate-200 overflow-hidden shrink-0">
-                                <img src={act.original_image || 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=400&q=80'} alt={act.custom_title} className="w-full h-full object-cover" />
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className="w-14 h-14 rounded-2xl bg-slate-200 overflow-hidden shrink-0 shadow-sm">
+                                <img
+                                  src={act.original_image || 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=400&q=80'}
+                                  alt={act.custom_title}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
-                              <div>
+
+                              <div className="space-y-1 min-w-0">
                                 <div className={`font-extrabold text-slate-900 text-sm flex items-center gap-2 ${act.is_completed ? 'line-through text-slate-400' : ''}`}>
                                   <button
                                     onClick={() => handleToggleActivityCompletion(act.id, !!act.is_completed)}
-                                    className="hover:scale-110 transition"
+                                    className="hover:scale-110 transition shrink-0"
                                     title={act.is_completed ? 'Mark incomplete' : 'Mark completed'}
                                   >
                                     {act.is_completed ? (
-                                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                      <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
                                     ) : (
-                                      <Circle className="w-4 h-4 text-slate-400 hover:text-sky-500" />
+                                      <Circle className="w-4.5 h-4.5 text-slate-400 hover:text-sky-500" />
                                     )}
                                   </button>
-                                  <span>{act.custom_title || act.original_name}</span>
+                                  <span className="truncate">{act.custom_title || act.original_name}</span>
                                 </div>
-                                <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5 font-medium">
-                                  <span className="flex items-center gap-1 text-sky-600 font-bold"><Clock className="w-3 h-3" /> {act.time_slot} ({act.duration_minutes} min)</span>
-                                  <span>•</span>
-                                  <span className="bg-slate-200 px-2 py-0.2 rounded text-[10px] text-slate-700 font-bold">{act.category}</span>
+
+                                <div className="text-xs text-slate-500 flex flex-wrap items-center gap-2 font-medium">
+                                  <span className="flex items-center gap-1 text-sky-600 font-bold bg-sky-50 px-2 py-0.5 rounded-md">
+                                    <Clock className="w-3 h-3" /> {act.time_slot || '10:00 AM'} ({act.duration_minutes || 90} min)
+                                  </span>
+                                  <span className="bg-slate-200/80 px-2 py-0.5 rounded-md text-[10px] text-slate-700 font-extrabold">
+                                    {act.category || 'Sightseeing'}
+                                  </span>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="font-extrabold text-sm text-emerald-600 shrink-0">
-                              ₹{act.cost}
+                            <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                              <div className="text-right">
+                                <div className="font-black text-sm text-emerald-600">
+                                  ₹{Number(act.cost || 0).toLocaleString()}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-semibold">Estimated Cost</div>
+                              </div>
                             </div>
                           </div>
                         ))
@@ -250,21 +349,54 @@ export default function TripViewPage() {
               })}
             </div>
           ) : (
-            <Card className="bg-white border-slate-200 p-6 shadow-sm space-y-4">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-sky-500" /> Itinerary Calendar Grid
-              </h2>
+            /* Calendar View Grid Mode matching Image 1 */
+            <Card className="bg-white border-slate-200/90 p-6 shadow-md space-y-5 rounded-3xl">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-sky-500" /> Day-wise Calendar View
+                </h2>
+                <Badge variant="outline" className="text-xs text-slate-600 border-slate-200">
+                  {trip.stops?.length || 0} Total Days
+                </Badge>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {trip.stops?.map((stop: any, idx: number) => (
-                  <div key={stop.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                    <div className="text-xs font-bold text-sky-600">Day {idx + 1} • {stop.arrival_date}</div>
-                    <div className="font-extrabold text-slate-900">{stop.city_name}</div>
-                    <div className="text-[11px] text-slate-500 font-medium">
-                      {(trip.activities?.filter((a: any) => a.trip_stop_id === stop.id) || []).length} Scheduled Events
+                {trip.stops?.map((stop: any, idx: number) => {
+                  const stopActivities = trip.activities?.filter((a: any) => a.trip_stop_id === stop.id) || [];
+                  const dayTotal = stopActivities.reduce((sum: number, act: any) => sum + (Number(act.cost) || 0), 0);
+
+                  return (
+                    <div
+                      key={stop.id}
+                      onClick={() => {
+                        setSelectedStopId(stop.id);
+                        setViewMode('timeline');
+                      }}
+                      className="bg-gradient-to-br from-slate-50 to-sky-50/40 p-4.5 rounded-2xl border border-slate-200/90 hover:border-sky-500 transition-all cursor-pointer shadow-2xs group space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-sky-600 uppercase tracking-wider">Day {idx + 1}</span>
+                        <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                          {stop.arrival_date}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="font-black text-slate-900 text-base group-hover:text-sky-600 transition">
+                          {stop.city_name}
+                        </div>
+                        <div className="text-xs text-slate-500 font-medium mt-0.5">
+                          {stopActivities.length} Scheduled Events
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-extrabold">
+                        <span className="text-slate-600">Day Total:</span>
+                        <span className="text-emerald-600">₹{dayTotal.toLocaleString()}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           )}
@@ -272,11 +404,21 @@ export default function TripViewPage() {
 
       </div>
 
+      {/* Floating AI Assistant Trigger */}
+      <button
+        onClick={() => setShowAIModal(true)}
+        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-sky-500 to-indigo-600 text-white p-4 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2.5 group font-bold text-xs ring-4 ring-sky-500/20"
+        title="Ask GlobeTrotter AI Assistant"
+      >
+        <Bot className="w-5 h-5 text-amber-300 animate-bounce" />
+        <span className="hidden sm:inline pr-1">Ask Trip AI</span>
+      </button>
+
       {/* Modals */}
       <PackingListModal
         tripId={tripId}
         destinationName={trip.title}
-        durationDays={6}
+        durationDays={trip.stops?.length || 5}
         isOpen={showPackingModal}
         onClose={() => setShowPackingModal(false)}
       />
