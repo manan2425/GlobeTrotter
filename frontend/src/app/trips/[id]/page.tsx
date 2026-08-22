@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Compass, MapPin, Calendar, Clock, DollarSign, Sparkles,
-  Share2, Edit, Luggage, ArrowLeft, Layers
+  Share2, Edit, Luggage, ArrowLeft, Layers, CheckCircle2, Circle
 } from 'lucide-react';
 import { apiRequest } from '../../../lib/api';
 import toast from 'react-hot-toast';
@@ -46,6 +46,19 @@ export default function TripViewPage() {
       toast.error('Failed to load trip');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleActivityCompletion = async (actId: string, currentStatus: boolean) => {
+    try {
+      await apiRequest(`/trip-activities/${actId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ is_completed: !currentStatus })
+      });
+      fetchTrip();
+      toast.success(!currentStatus ? 'Activity marked as completed! 🎉' : 'Activity status reset');
+    } catch (err: any) {
+      toast.error('Failed to update activity status');
     }
   };
 
@@ -203,7 +216,20 @@ export default function TripViewPage() {
                                 <img src={act.original_image || 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=400&q=80'} alt={act.custom_title} className="w-full h-full object-cover" />
                               </div>
                               <div>
-                                <div className="font-extrabold text-slate-900 text-sm">{act.custom_title || act.original_name}</div>
+                                <div className={`font-extrabold text-slate-900 text-sm flex items-center gap-2 ${act.is_completed ? 'line-through text-slate-400' : ''}`}>
+                                  <button
+                                    onClick={() => handleToggleActivityCompletion(act.id, !!act.is_completed)}
+                                    className="hover:scale-110 transition"
+                                    title={act.is_completed ? 'Mark incomplete' : 'Mark completed'}
+                                  >
+                                    {act.is_completed ? (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                    ) : (
+                                      <Circle className="w-4 h-4 text-slate-400 hover:text-sky-500" />
+                                    )}
+                                  </button>
+                                  <span>{act.custom_title || act.original_name}</span>
+                                </div>
                                 <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5 font-medium">
                                   <span className="flex items-center gap-1 text-sky-600 font-bold"><Clock className="w-3 h-3" /> {act.time_slot} ({act.duration_minutes} min)</span>
                                   <span>•</span>

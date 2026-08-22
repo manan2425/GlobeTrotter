@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { DollarSign, PieChart as PieIcon, BarChart2, Plus, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { DollarSign, PieChart as PieIcon, BarChart2, Plus, AlertTriangle, ArrowLeft, Trash2 } from 'lucide-react';
 import { apiRequest } from '../../../../lib/api';
 import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
@@ -38,6 +38,17 @@ export default function BudgetDashboardPage() {
       toast.error('Failed to load budget analytics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteExpense = async (expId: string) => {
+    if (!confirm('Are you sure you want to delete this expense entry?')) return;
+    try {
+      await apiRequest(`/expenses/${expId}`, { method: 'DELETE' });
+      toast.success('Expense deleted');
+      fetchBudget();
+    } catch (err: any) {
+      toast.error('Failed to delete expense');
     }
   };
 
@@ -228,12 +239,13 @@ export default function BudgetDashboardPage() {
                 <th className="p-3">Paid By</th>
                 <th className="p-3">Method</th>
                 <th className="p-3 text-right">Amount</th>
+                <th className="p-3 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {budgetData.actual_expenses?.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-400">No actual expenses logged yet. Click 'Record Actual Expense' above!</td>
+                  <td colSpan={7} className="p-6 text-center text-slate-400">No actual expenses logged yet. Click 'Record Actual Expense' above!</td>
                 </tr>
               ) : (
                 budgetData.actual_expenses.map((exp: any) => (
@@ -244,6 +256,15 @@ export default function BudgetDashboardPage() {
                     <td className="p-3 text-slate-500">{exp.paid_by_name}</td>
                     <td className="p-3 text-slate-500">{exp.payment_method}</td>
                     <td className="p-3 text-right font-extrabold text-amber-600">₹{exp.amount?.toLocaleString()}</td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => handleDeleteExpense(exp.id)}
+                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
+                        title="Delete expense"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
