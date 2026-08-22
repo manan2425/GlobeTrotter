@@ -193,13 +193,13 @@ export default function LoginPage() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => handleDemoFill('manan@globetrotter.com', 'Demo12345!')}
+              onClick={() => handleDemoFill('manan@globetrotter.com', 'demo123')}
               className="bg-white hover:bg-slate-100 text-slate-800 py-2 px-2.5 rounded-xl text-[11px] font-bold border border-slate-200 transition text-left shadow-sm"
             >
               👤 Manan (User)
             </button>
             <button
-              onClick={() => handleDemoFill('admin@globetrotter.com', 'Admin12345!')}
+              onClick={() => handleDemoFill('admin@globetrotter.com', 'admin123')}
               className="bg-amber-50 hover:bg-amber-100 text-amber-800 py-2 px-2.5 rounded-xl text-[11px] font-bold border border-amber-200 transition text-left shadow-sm"
             >
               🛡️ Admin
