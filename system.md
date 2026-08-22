@@ -87,6 +87,7 @@ hackthon/
 │       │   ├── Navbar.tsx             # Top Navigation bar, Notifications menu & User Profile menu
 │       │   ├── MobileNav.tsx          # Mobile bottom navigation bar
 │       │   ├── AIAssistantModal.tsx   # Floating AI Chatbot Modal
+│       │   ├── ActivitySearchModal.tsx# Activity Search & Discovery Engine Modal (filters by category, budget, duration & quick-view)
 │       │   ├── PackingListModal.tsx   # Dynamic AI Packing Checklist Modal
 │       │   ├── ShareModal.tsx         # Trip Visibility & Collaborator Invite Modal
 │       │   ├── CollaborationPanel.tsx # Co-travelers & Trip Discussion Board Drawer
@@ -112,11 +113,11 @@ hackthon/
 | `/dashboard` | User Dashboard | Overview of upcoming/ongoing trips, user quick stats, saved destinations, quick action cards | `GET /api/auth/me`, `GET /api/trips`, `GET /api/destinations/saved/me` |
 | `/trips` | Trips Manager | Grid view of user's trips, status filters (*Upcoming, Ongoing, Completed, Draft*), search bar, budget sorting | `GET /api/trips`, `DELETE /api/trips/:id`, `POST /api/trips/:id/duplicate` |
 | `/trips/new` | Create Trip Wizard | Multi-step form: trip title, start/end dates, estimated budget, currency, city multi-selector | `POST /api/trips`, `GET /api/destinations` |
-| `/trips/[id]` | Trip Overview Hub | Central hub for a specific trip: stops preview, activity highlights, collaborator avatars, weather widget, map | `GET /api/trips/:id`, `POST /api/trips/:id/share` |
-| `/trips/[id]/builder` | Itinerary Builder | Interactive day-by-day itinerary planner, stop reordering, activity selection modal, activity upvoting, custom activity creation | `GET /api/trips/:id`, `POST /api/trips/:id/activities`, `PUT /api/trip-activities/:id`, `DELETE /api/trip-activities/:id`, `PATCH /api/trips/:id/activities/reorder` |
+| `/trips/[id]` | Trip Overview Hub | Central hub for a specific trip: stops preview, activity highlights, collaborator avatars, weather widget, map, Activity Search drawer | `GET /api/trips/:id`, `POST /api/trips/:id/share`, `GET /api/activities` |
+| `/trips/[id]/builder` | Itinerary Builder | Interactive day-by-day itinerary planner, stop reordering, Activity Search & Discovery modal, activity upvoting, custom activity creation | `GET /api/trips/:id`, `GET /api/activities`, `POST /api/trips/:id/activities`, `PUT /api/trip-activities/:id`, `DELETE /api/trip-activities/:id`, `PATCH /api/trips/:id/activities/reorder` |
 | `/trips/[id]/budget` | Budget & Expense Tracker | Total estimated vs actual spent, category breakdowns (Transportation, Accommodation, Activities, Food, etc.), city expense distribution, actual expense logger | `GET /api/trips/:id/budget`, `POST /api/trips/:id/expenses`, `DELETE /api/expenses/:id` |
 | `/trips/[id]/optimize` | AI Route & Packing Optimizer | AI-powered route sequence analysis, transit time savings, schedule conflict resolution, interactive packing list drawer | `POST /api/ai/optimize-itinerary`, `POST /api/ai/packing-list`, `GET /api/trips/:id/weather` |
-| `/explore` | Destination Explorer | Search destinations across countries/regions, filter by maximum daily budget, view city details, save to wishlist | `GET /api/destinations`, `GET /api/destinations/:id`, `GET /api/countries`, `POST /api/destinations/:id/save` |
+| `/explore` | Destination Explorer | Search destinations across countries/regions, filter by maximum daily budget, view city details, Activity Search modal with category/cost filters | `GET /api/destinations`, `GET /api/activities`, `GET /api/countries`, `POST /api/destinations/:id/save` |
 | `/templates` | Curated Trip Templates | Pre-packaged multi-city itineraries (e.g. Rajasthan Heritage, European Golden Triangle), category filters, instant 'Use Template' cloning | `GET /api/templates`, `POST /api/templates/:id/use` |
 | `/profile` | User Profile Page | Edit user full name, bio, home city, default currency, view unlocked achievements and badges | `GET /api/auth/me`, `PUT /api/auth/profile` |
 | `/public/trips/[slug]` | Shared Public Trip | Read-only view for shared public itineraries, 'Copy to My Trips' button for registered users | `GET /api/public/trips/:slug`, `POST /api/public/trips/:slug/copy` |

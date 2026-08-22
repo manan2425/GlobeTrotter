@@ -3,17 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Compass, MapPin, Star, Plus } from 'lucide-react';
+import { Search, Compass, MapPin, Star, Plus, Sparkles } from 'lucide-react';
 import { apiRequest } from '../../lib/api';
 import toast from 'react-hot-toast';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
+import ActivitySearchModal from '../../components/ActivitySearchModal';
 
 export default function ExplorePage() {
   const router = useRouter();
   const [cities, setCities] = useState<any[]>([]);
   const [countries, setCountries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [selectedCityForModal, setSelectedCityForModal] = useState<any | null>(null);
 
   const [search, setSearch] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('All');
@@ -72,11 +75,24 @@ export default function ExplorePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">
-          <Compass className="w-7 h-7 text-sky-500" /> Destination & Activity Discovery
-        </h1>
-        <p className="text-xs text-slate-500">Discover popular cities, local sightseeing tours, culinary experiences, and adventure sports</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2">
+            <Compass className="w-7 h-7 text-sky-500" /> Destination & Activity Discovery
+          </h1>
+          <p className="text-xs text-slate-500">Discover popular cities, local sightseeing tours, culinary experiences, and adventure sports</p>
+        </div>
+
+        <Button
+          onClick={() => {
+            setSelectedCityForModal(null);
+            setShowActivityModal(true);
+          }}
+          variant="secondary"
+          className="gap-2 font-bold text-xs shadow-sm bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100 self-start sm:self-auto"
+        >
+          <Sparkles className="w-4 h-4 text-sky-600" /> Open Activity Search Engine
+        </Button>
       </div>
 
       {/* Search & Filter Strip */}
@@ -151,26 +167,48 @@ export default function ExplorePage() {
               <div className="p-5 space-y-4">
                 <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">{city.description}</p>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Avg Daily Budget</div>
+                    <div className="text-[10px] text-slate-400 uppercase font-bold">Avg Daily Cost</div>
                     <div className="font-extrabold text-sm text-slate-900">₹{city.avg_daily_cost?.toLocaleString()} / day</div>
                   </div>
 
-                  <Button
-                    onClick={() => handleQuickAddTrip(city.id, city.name)}
-                    variant="default"
-                    size="sm"
-                    className="gap-1 font-bold"
-                  >
-                    <Plus className="w-4 h-4" /> Add to Trip
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => {
+                        setSelectedCityForModal(city);
+                        setShowActivityModal(true);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="font-bold text-xs text-sky-600 border-sky-200 hover:bg-sky-50"
+                    >
+                      Activities
+                    </Button>
+
+                    <Button
+                      onClick={() => handleQuickAddTrip(city.id, city.name)}
+                      variant="default"
+                      size="sm"
+                      className="gap-1 font-bold"
+                    >
+                      <Plus className="w-4 h-4" /> Add Trip
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Activity Search Modal */}
+      <ActivitySearchModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        cityId={selectedCityForModal?.id}
+        cityName={selectedCityForModal?.name}
+      />
 
     </div>
   );

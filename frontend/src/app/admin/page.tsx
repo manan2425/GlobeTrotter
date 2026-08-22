@@ -695,7 +695,7 @@ export default function AdminDashboardPage() {
 
       {/* 1. User Modal */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">{userEditId ? 'Edit User' : 'Create New User Account'}</h3>
             <form onSubmit={handleSaveUser} className="space-y-3">
@@ -740,7 +740,7 @@ export default function AdminDashboardPage() {
 
       {/* 2. Trip Modal */}
       {showTripModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">{tripEditId ? 'Edit Trip' : 'Create New Trip'}</h3>
             <form onSubmit={handleSaveTrip} className="space-y-3">
@@ -783,7 +783,7 @@ export default function AdminDashboardPage() {
 
       {/* 3. City Modal */}
       {showCityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">{cityEditId ? 'Edit City' : 'Add Destination City'}</h3>
             <form onSubmit={handleSaveCity} className="space-y-3">
@@ -816,7 +816,7 @@ export default function AdminDashboardPage() {
 
       {/* 4. Template Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">{tmplEditId ? 'Edit Template' : 'Add Trip Template'}</h3>
             <form onSubmit={handleSaveTemplate} className="space-y-3">
@@ -845,7 +845,7 @@ export default function AdminDashboardPage() {
 
       {/* 5. Country Modal */}
       {showCountryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">{cntryEditId ? 'Edit Country' : 'Add Country'}</h3>
             <form onSubmit={handleSaveCountry} className="space-y-3">
