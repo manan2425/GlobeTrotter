@@ -88,6 +88,7 @@ export async function initDatabase() {
         full_name VARCHAR(255) NOT NULL,
         profile_photo TEXT,
         role VARCHAR(50) DEFAULT 'user',
+        status VARCHAR(50) DEFAULT 'Active',
         currency VARCHAR(10) DEFAULT 'INR',
         language VARCHAR(10) DEFAULT 'en',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -320,9 +321,10 @@ export async function initDatabase() {
 
     // Migration fallback for existing Neon DB instances
     try {
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Active'");
       await pool.query('ALTER TABLE otps ALTER COLUMN expires_at TYPE VARCHAR(255) USING expires_at::text');
     } catch (e) {
-      // Column is already VARCHAR or table newly created
+      // Columns already exist
     }
 
     console.log('✅ Neon PostgreSQL Database schema initialized successfully.');
