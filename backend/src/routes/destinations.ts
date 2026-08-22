@@ -18,8 +18,8 @@ router.get('/destinations', async (req, res, next) => {
     const params: any[] = [];
 
     if (search) {
-      query += ` AND (c.name LIKE ? OR c.country_name LIKE ? OR c.description LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      query += ` AND (LOWER(c.name) LIKE LOWER(?) OR LOWER(c.country_name) LIKE LOWER(?) OR LOWER(c.region) LIKE LOWER(?) OR LOWER(c.description) LIKE LOWER(?))`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     if (region && region !== 'All') {

@@ -108,7 +108,7 @@ export default function CreateTripPage() {
           estimated_budget: Number(estimatedBudget) || 0,
           currency,
           cover_image: coverImage,
-          initial_cities: ['city_amd', 'city_udaipur', 'city_jodhpur', 'city_jaipur']
+          initial_cities: []
         })
       });
 

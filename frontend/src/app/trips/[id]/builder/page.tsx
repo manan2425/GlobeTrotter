@@ -181,6 +181,10 @@ export default function ItineraryBuilderPage() {
     e.preventDefault();
     if (!showAddHotelModal || !hotelName) return;
 
+    const arr = new Date(showAddHotelModal.arrival_date || trip?.start_date || Date.now()).getTime();
+    const dep = new Date(showAddHotelModal.departure_date || trip?.end_date || Date.now()).getTime();
+    const nights = Math.max(1, Math.round(Math.abs(dep - arr) / (1000 * 60 * 60 * 24)));
+
     try {
       await apiRequest(`/trips/${tripId}/accommodations`, {
         method: 'POST',
@@ -188,10 +192,10 @@ export default function ItineraryBuilderPage() {
           trip_id: tripId,
           trip_stop_id: showAddHotelModal.id,
           name: hotelName,
-          check_in: showAddHotelModal.arrival_date,
-          check_out: showAddHotelModal.departure_date,
+          check_in: showAddHotelModal.arrival_date || trip?.start_date,
+          check_out: showAddHotelModal.departure_date || trip?.end_date,
           cost_per_night: Number(hotelCost),
-          total_cost: Number(hotelCost) * 2
+          total_cost: Number(hotelCost) * nights
         })
       });
       toast.success('Hotel stay added!');
@@ -199,8 +203,7 @@ export default function ItineraryBuilderPage() {
       setHotelName('');
       fetchTripDetails();
     } catch (err: any) {
-      toast.success('Hotel stay recorded');
-      setShowAddHotelModal(null);
+      toast.error(err.message || 'Failed to record hotel stay');
     }
   };
 

@@ -27,8 +27,8 @@ export default function AIAssistantModal({ tripId, isOpen, onClose }: { tripId?:
   if (!isOpen) return null;
 
   const quickPrompts = [
-    'Plan a 5-day trip to Rajasthan under ₹25,000.',
-    'Suggest top activities in Jaipur.',
+    'Plan a budget-friendly 5-day trip.',
+    'Suggest top activities to do here.',
     'Make my itinerary less expensive.',
     'Add more adventure activities.',
     'Which city should I visit next?'
@@ -67,11 +67,11 @@ export default function AIAssistantModal({ tripId, isOpen, onClose }: { tripId?:
           method: 'POST',
           body: JSON.stringify({
             title: act.data.title || 'AI Recommended Trip',
-            description: 'AI Generated multi-city itinerary package.',
+            description: 'AI Generated itinerary package.',
             start_date: new Date().toISOString().split('T')[0],
             end_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
             estimated_budget: act.data.budget || 25000,
-            initial_cities: act.data.cities || ['city_udaipur', 'city_jodhpur', 'city_jaipur']
+            initial_cities: act.data.cities || []
           })
         });
         toast.success(`Created trip: ${act.data.title}! Redirecting...`);
