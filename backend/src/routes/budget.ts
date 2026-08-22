@@ -15,43 +15,62 @@ router.get('/trips/:id/budget', async (req, res, next) => {
     }
 
     const actStats: any[] = await db.prepare(`
-      SELECT category, SUM(cost) as total_cost, COUNT(*) as count
-      FROM trip_activities
-      WHERE trip_id = ?
-      GROUP BY category
+      SELECT COALESCE(ta.category, a.category, 'Sightseeing') as category,
+             SUM(COALESCE(NULLIF(ta.cost, 0), a.estimated_cost, 450)) as total_cost,
+             COUNT(*) as count
+      FROM trip_activities ta
+      LEFT JOIN activities a ON ta.activity_id = a.id
+      WHERE ta.trip_id = ?
+      GROUP BY COALESCE(ta.category, a.category, 'Sightseeing')
     `).all(tripId);
 
     const accTotal: any = await db.prepare('SELECT SUM(total_cost) as total FROM accommodations WHERE trip_id = ?').get(tripId);
-    const transTotal: any = await db.prepare('SELECT SUM(cost) as total FROM transportation WHERE trip_id = ?').get(tripId);
-    const actualExpenses: any[] = await db.prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY date DESC').all(tripId);
-
-    const actualSpentTotal = actualExpenses.reduce((acc, exp) => acc + (exp.amount || 0), 0);
-
-    const categoryBreakdown: Record<string, number> = {
-      Transportation: (transTotal && transTotal.total) ? transTotal.total : 0,
-      Accommodation: (accTotal && accTotal.total) ? accTotal.total : 0,
-      Activities: 0,
-      Food: 0,
-      Shopping: 0,
-      Miscellaneous: 0
-    };
-
-    actStats.forEach((st) => {
-      if (st.category === 'Food') categoryBreakdown.Food += st.total_cost;
-      else if (st.category === 'Shopping') categoryBreakdown.Shopping += st.total_cost;
-      else categoryBreakdown.Activities += st.total_cost;
-    });
-
-    const totalEstimatedCost = Object.values(categoryBreakdown).reduce((a, b) => a + b, 0);
+    let totalAccCost = (accTotal && accTotal.total) ? Number(accTotal.total) : 0;
 
     const stops = await db.prepare(`
-      SELECT ts.id, ts.city_id, c.name as city_name,
-             (SELECT SUM(cost) FROM trip_activities WHERE trip_stop_id = ts.id) as activities_cost,
+      SELECT ts.id, ts.city_id, ts.arrival_date, ts.departure_date, c.name as city_name, c.avg_daily_cost,
+             (SELECT SUM(COALESCE(NULLIF(cost, 0), 450)) FROM trip_activities WHERE trip_stop_id = ts.id) as activities_cost,
              (SELECT SUM(total_cost) FROM accommodations WHERE trip_stop_id = ts.id) as acc_cost
       FROM trip_stops ts
       JOIN cities c ON ts.city_id = c.id
       WHERE ts.trip_id = ?
     `).all(tripId);
+
+    if (totalAccCost === 0 && stops.length > 0) {
+      stops.forEach((s: any) => {
+        const arr = new Date(s.arrival_date || trip.start_date).getTime();
+        const dep = new Date(s.departure_date || trip.end_date).getTime();
+        const nights = Math.max(1, Math.round(Math.abs(dep - arr) / (1000 * 60 * 60 * 24)));
+        const cityCost = Number(s.avg_daily_cost) || 2800;
+        totalAccCost += Math.round(cityCost * 0.65 * nights);
+      });
+    }
+
+    const transTotal: any = await db.prepare('SELECT SUM(cost) as total FROM transportation WHERE trip_id = ?').get(tripId);
+    let totalTransCost = (transTotal && transTotal.total) ? Number(transTotal.total) : 0;
+    if (totalTransCost === 0 && stops.length > 1) {
+      totalTransCost = (stops.length - 1) * 1200;
+    }
+
+    const actualExpenses: any[] = await db.prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY date DESC').all(tripId);
+    const actualSpentTotal = actualExpenses.reduce((acc, exp) => acc + (exp.amount || 0), 0);
+
+    let activitiesSum = 0;
+    actStats.forEach((st) => { activitiesSum += Number(st.total_cost || 0); });
+    if (activitiesSum === 0 && stops.length > 0) {
+      activitiesSum = stops.length * 900;
+    }
+
+    const categoryBreakdown: Record<string, number> = {
+      Transportation: totalTransCost,
+      Accommodation: totalAccCost,
+      Activities: activitiesSum,
+      Food: Math.round((trip.estimated_budget || 25000) * 0.2),
+      Shopping: Math.round((trip.estimated_budget || 25000) * 0.1),
+      Miscellaneous: 0
+    };
+
+    const totalEstimatedCost = Object.values(categoryBreakdown).reduce((a, b) => a + b, 0);
 
     const cityBreakdown = stops.map((s: any) => ({
       city_name: s.city_name,

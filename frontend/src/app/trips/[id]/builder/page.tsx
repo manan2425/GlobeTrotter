@@ -423,32 +423,51 @@ export default function ItineraryBuilderPage() {
           </Card>
 
           {/* Quick Cost Summary */}
-          <Card className="bg-white border-slate-200 p-5 shadow-sm space-y-3">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-emerald-500" /> Budget Calculation
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between text-slate-500 font-medium">
-                <span>Planned Budget</span>
-                <span className="font-bold text-slate-900">₹{(trip.estimated_budget || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-500 font-medium">
-                <span>Activities Cost</span>
-                <span className="font-bold text-sky-600">₹{(trip.activities?.reduce((a: number, b: any) => a + (b.cost || 0), 0) || 0).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-500 font-medium">
-                <span>Hotels & Stay</span>
-                <span className="font-bold text-amber-600">₹{(trip.accommodations?.reduce((a: number, b: any) => a + (b.total_cost || 0), 0) || 0).toLocaleString()}</span>
-              </div>
-              <div className="pt-2 border-t border-slate-100 flex justify-between text-sm font-extrabold text-slate-900">
-                <span>Total Estimated</span>
-                <span className="text-emerald-600">₹{(
-                  (trip.activities?.reduce((a: number, b: any) => a + (b.cost || 0), 0) || 0) +
-                  (trip.accommodations?.reduce((a: number, b: any) => a + (b.total_cost || 0), 0) || 0)
-                ).toLocaleString()}</span>
-              </div>
-            </div>
-          </Card>
+          {(() => {
+            const activitiesTotal = (trip.activities && trip.activities.length > 0)
+              ? trip.activities.reduce((sum: number, act: any) => sum + (Number(act.cost) || Number(act.estimated_cost) || 450), 0)
+              : (trip.stops ? trip.stops.length * 900 : 0);
+
+            const hotelsTotal = (trip.accommodations && trip.accommodations.length > 0)
+              ? trip.accommodations.reduce((sum: number, acc: any) => sum + (Number(acc.total_cost) || 0), 0)
+              : (trip.stops && trip.stops.length > 0)
+                ? trip.stops.reduce((sum: number, stop: any) => {
+                    const arr = new Date(stop.arrival_date || trip.start_date).getTime();
+                    const dep = new Date(stop.departure_date || trip.end_date).getTime();
+                    const nights = Math.max(1, Math.round(Math.abs(dep - arr) / (1000 * 60 * 60 * 24)));
+                    const cityCost = Number(stop.avg_daily_cost) || 2800;
+                    return sum + Math.round(cityCost * 0.65 * nights);
+                  }, 0)
+                : 0;
+
+            const totalEstimated = activitiesTotal + hotelsTotal;
+
+            return (
+              <Card className="bg-white border-slate-200 p-5 shadow-sm space-y-3">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-500" /> Budget Calculation
+                </h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-500 font-medium">
+                    <span>Planned Budget</span>
+                    <span className="font-bold text-slate-900">₹{(trip.estimated_budget || 25000).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 font-medium">
+                    <span>Activities Cost</span>
+                    <span className="font-bold text-sky-600">₹{activitiesTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 font-medium">
+                    <span>Hotels & Stay</span>
+                    <span className="font-bold text-amber-600">₹{hotelsTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 flex justify-between text-sm font-extrabold text-slate-900">
+                    <span>Total Estimated</span>
+                    <span className="text-emerald-600">₹{totalEstimated.toLocaleString()}</span>
+                  </div>
+                </div>
+              </Card>
+            );
+          })()}
 
         </div>
 
