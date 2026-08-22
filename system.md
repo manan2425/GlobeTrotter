@@ -21,8 +21,8 @@
 
 ### Backend Architecture
 - **Runtime & Server**: Node.js, Express.js, TypeScript (`ts-node-dev` for hot-reloading)
-- **Database**: SQLite powered by `better-sqlite3` (synchronous, high-performance SQLite binding)
-- **Database File**: `backend/globetrotter.db` (auto-created if missing)
+- **Database**: Cloud PostgreSQL hosted on **Neon DB** (`pg` connection pool)
+- **Environment Configuration**: `backend/.env` (`DATABASE_URL=postgresql://...`, `PORT=5000`, `JWT_SECRET`)
 - **Authentication**: JSON Web Tokens (`jsonwebtoken`) & `bcryptjs` for password hashing
 - **Security Middleware**: `authenticateToken` & `requireAdmin` (`backend/src/middleware/auth.ts`)
 - **Port**: Default `5000` (`http://localhost:5000`)
@@ -35,14 +35,14 @@
 ```
 hackthon/
 ├── system.md                          # [THIS FILE] AI Agent Reference & System Blueprint
-├── backend/                           # Node.js + Express + SQLite Backend
-│   ├── globetrotter.db                # SQLite Database file (Auto-generated)
-│   ├── package.json                   # Backend dependencies (express, better-sqlite3, jsonwebtoken, etc.)
+├── backend/                           # Node.js + Express + PostgreSQL Backend
+│   ├── .env                           # Environment variables (DATABASE_URL, PORT, JWT_SECRET)
+│   ├── package.json                   # Backend dependencies (express, pg, jsonwebtoken, bcryptjs, etc.)
 │   ├── tsconfig.json                  # TypeScript compiler settings
 │   └── src/
 │       ├── server.ts                  # Server entry point, route mounts & error handler
 │       ├── db/
-│         ├── db.ts                    # SQLite initialization, schema creation & indexes
+│         ├── db.ts                    # PostgreSQL connection pool, schema initialization & helper wrapper
 │         └── seed.ts                  # Database seed script for dummy data
 │       ├── middleware/
 │         └── auth.ts                  # JWT token validation & admin check middleware
@@ -123,204 +123,45 @@ hackthon/
 
 ---
 
-## 5. Backend Route & API Endpoint Reference
-
-### Auth & User Profile (`/api/auth`)
-- **`POST /api/auth/signup`**
-  - **Body**: `{ email, password, full_name, profile_photo? }`
-  - **Action**: Creates new user, default profile, welcome notification, returns JWT token.
-- **`POST /api/auth/login`**
-  - **Body**: `{ email, password }`
-  - **Action**: Validates credentials, returns JWT token and user info.
-- **`POST /api/auth/forgot-password`**
-  - **Body**: `{ email }`
-  - **Action**: Simulates password reset link email dispatch.
-- **`GET /api/auth/me`** *(Auth Required)*
-  - **Action**: Returns current user details, profile info, stats, and unlocked achievements.
-- **`PUT /api/auth/profile`** *(Auth Required)*
-  - **Body**: `{ full_name, profile_photo, currency, bio, home_city, home_country, is_public }`
-  - **Action**: Updates user and profile records.
-
-### Trips Management (`/api/trips`)
-- **`GET /api/trips`** *(Auth Required)*
-  - **Query**: `status` (All, Upcoming, Ongoing, Completed, Draft), `search`, `sort` (newest, oldest, budget_high, budget_low)
-  - **Action**: Retrieves all trips owned by user or shared with user.
-- **`POST /api/trips`** *(Auth Required)*
-  - **Body**: `{ title, description, cover_image, start_date, end_date, estimated_budget, currency, initial_cities: string[] }`
-  - **Action**: Creates a new trip, attaches owner member, initializes optional city stops.
-- **`GET /api/trips/:id`**
-  - **Action**: Fetches complete trip object with stops, activities, accommodations, transportation, expenses, members, and comments.
-- **`PUT /api/trips/:id`** *(Auth Required)*
-  - **Body**: `{ title, description, cover_image, start_date, end_date, estimated_budget, currency, status, visibility }`
-  - **Action**: Updates trip settings.
-- **`DELETE /api/trips/:id`** *(Auth Required)*
-  - **Action**: Cascades deletion of trip and associated stops, activities, members, and expenses.
-- **`POST /api/trips/:id/duplicate`** *(Auth Required)*
-  - **Action**: Duplicates an existing trip (including stops and activities) as a new Draft trip for the current user.
-
-### Stops Management (`/api/trips/:id/stops` & `/api/stops`)
-- **`POST /api/trips/:id/stops`** *(Auth Required)*
-  - **Body**: `{ city_id, arrival_date, departure_date, notes }`
-  - **Action**: Adds a new city stop to the trip.
-- **`PUT /api/stops/:id`** *(Auth Required)*
-  - **Body**: `{ arrival_date, departure_date, notes, stop_order }`
-  - **Action**: Updates stop details.
-- **`DELETE /api/stops/:id`** *(Auth Required)*
-  - **Action**: Removes a stop from the trip.
-- **`PATCH /api/trips/:id/stops/reorder`** *(Auth Required)*
-  - **Body**: `{ ordered_stop_ids: string[] }`
-  - **Action**: Reorders the stop sequences for a trip.
-
-### Activities & Itinerary (`/api/activities` & `/api/trip-activities`)
-- **`GET /api/activities`**
-  - **Query**: `city_id`, `category`, `search`
-  - **Action**: Returns catalog of available activities.
-- **`GET /api/cities/:id/activities`**
-  - **Action**: Returns activity catalog for a specific city.
-- **`POST /api/trips/:id/activities`** *(Auth Required)*
-  - **Body**: `{ trip_stop_id, activity_id?, day_number, custom_title, category, time_slot, duration_minutes, cost, notes }`
-  - **Action**: Adds catalog activity or custom user activity into trip itinerary.
-- **`PUT /api/trip-activities/:id`** *(Auth Required)*
-  - **Body**: `{ custom_title, category, time_slot, duration_minutes, cost, notes, day_number, is_completed }`
-  - **Action**: Updates activity parameters or marks activity complete.
-- **`DELETE /api/trip-activities/:id`** *(Auth Required)*
-  - **Action**: Removes activity from trip itinerary.
-- **`PATCH /api/trips/:id/activities/reorder`** *(Auth Required)*
-  - **Body**: `{ ordered_activity_ids: string[] }`
-  - **Action**: Updates activity order sequence.
-
-### Budget & Expenses (`/api/trips/:id/budget` & `/api/expenses`)
-- **`GET /api/trips/:id/budget`**
-  - **Action**: Calculates planned budget vs estimated total cost, logged expenses, category breakdowns, per-city breakdown, and auto-generates smart budget alert messages.
-- **`POST /api/trips/:id/expenses`** *(Auth Required)*
-  - **Body**: `{ category, amount, date, description, paid_by_name, payment_method }`
-  - **Action**: Logs a real expense transaction.
-- **`DELETE /api/expenses/:id`** *(Auth Required)*
-  - **Action**: Deletes an expense entry.
-
-### AI Assistant & Optimization (`/api/ai`)
-- **`POST /api/ai/travel-assistant`**
-  - **Body**: `{ prompt: string, trip_id?: string }`
-  - **Action**: Returns AI response, itinerary recommendations, and suggested actions.
-- **`POST /api/ai/optimize-itinerary`**
-  - **Body**: `{ trip_id: string }`
-  - **Action**: Evaluates trip stops & activity order; generates route optimization, schedule buffer, and savings recommendations.
-- **`POST /api/ai/packing-list`**
-  - **Body**: `{ trip_id?, destination_name, duration_days }`
-  - **Action**: Generates categorized interactive packing checklist based on destination and duration.
-
-### Social Collaboration & Sharing (`/api/trips/:id/share`, `/api/public`, `/api/collaboration`)
-- **`POST /api/trips/:id/share`** *(Auth Required)*
-  - **Body**: `{ visibility: 'Private' | 'Friends' | 'Public' }`
-  - **Action**: Toggles trip visibility and generates public slug / URL.
-- **`GET /api/public/trips/:slug`**
-  - **Action**: Public read-only endpoint for shared trips.
-- **`POST /api/public/trips/:slug/copy`** *(Auth Required)*
-  - **Action**: Clones a public trip into the logged-in user's account.
-- **`POST /api/trips/:id/members`** *(Auth Required)*
-  - **Body**: `{ email, role: 'Editor' | 'Viewer' }`
-  - **Action**: Invites co-traveler member to trip; dispatches notification if user exists.
-- **`DELETE /api/trips/:id/members/:userId`** *(Auth Required)*
-  - **Action**: Removes co-traveler member from trip.
-- **`GET /api/trips/:id/comments`**
-  - **Action**: Fetches trip discussion comments.
-- **`POST /api/trips/:id/comments`** *(Auth Required)*
-  - **Body**: `{ content, activity_id? }`
-  - **Action**: Posts a new comment on a trip or specific activity.
-- **`POST /api/trip-activities/:id/vote`** *(Auth Required)*
-  - **Body**: `{ vote_type: 'up' | 'down' }`
-  - **Action**: Casts or toggles an upvote/downvote for a co-planned activity.
-
-### Destinations & Catalog (`/api/destinations` & `/api/countries`)
-- **`GET /api/destinations`**
-  - **Query**: `search`, `region`, `country_id`, `max_budget`
-  - **Action**: Returns filtered cities catalog with popularity scores and avg daily costs.
-- **`GET /api/destinations/:id`**
-  - **Action**: Returns detailed city profile with top rated activities.
-- **`GET /api/countries`**
-  - **Action**: Lists all available countries.
-- **`POST /api/destinations/:id/save`** *(Auth Required)*
-  - **Action**: Toggles destination in user's saved wishlist (`saved_destinations`).
-- **`GET /api/destinations/saved/me`** *(Auth Required)*
-  - **Action**: Returns all saved cities for logged in user.
-
-### Weather Intelligence (`/api/weather`)
-- **`GET /api/trips/:id/weather`**
-  - **Action**: Computes multi-stop weather forecast, temperature, rain probability, and weather warning alerts for the trip.
-
-### Templates (`/api/templates`)
-- **`GET /api/templates`**
-  - **Action**: Returns curated trip templates.
-- **`POST /api/templates/:id/use`** *(Auth Required)*
-  - **Action**: Instantly instantiates a new trip from template data.
-
-### Notifications (`/api/notifications`)
-- **`GET /api/notifications`** *(Auth Required)*
-  - **Action**: Returns latest 20 notifications and unread count.
-- **`PATCH /api/notifications/:id/read`** *(Auth Required)*
-  - **Action**: Marks specific notification or all notifications (`id='all'`) as read.
-
-### Admin Dashboard (`/api/admin`)
-- **`GET /api/admin/dashboard`** *(Auth + Admin Required)*
-  - **Action**: Returns platform KPIs, top destinations breakdown, and trip creation trends.
-- **`GET /api/admin/users`** *(Auth + Admin Required)*
-  - **Action**: Returns full user list with trip count stats.
-- **`GET /api/admin/trips`** *(Auth + Admin Required)*
-  - **Action**: Returns all trips in system with author details.
-
----
-
-## 6. Database Schema Reference (`backend/src/db/db.ts`)
+## 5. Database Schema Reference (`backend/src/db/db.ts`)
 
 | Table Name | Primary Key | Key Columns & Foreign Keys | Description |
 | :--- | :--- | :--- | :--- |
-| `users` | `id` (TEXT) | `email` (UNIQUE), `password_hash`, `full_name`, `role` (`user` \| `admin`), `currency` | User account authentication & preferences |
-| `profiles` | `id` (TEXT) | `user_id` (FK `users.id`), `bio`, `home_city`, `home_country`, `is_public` | Extended user bio & public preferences |
-| `countries` | `id` (TEXT) | `name` (UNIQUE), `code` (UNIQUE), `currency`, `region` | Country reference catalog |
-| `cities` | `id` (TEXT) | `country_id` (FK `countries.id`), `name`, `image_url`, `popularity_score`, `avg_daily_cost`, `latitude`, `longitude` | City destinations catalog |
-| `activities` | `id` (TEXT) | `city_id` (FK `cities.id`), `name`, `category`, `duration_minutes`, `estimated_cost`, `rating` | Activity catalog per city |
-| `trip_templates` | `id` (TEXT) | `title`, `category`, `cover_image`, `duration_days`, `estimated_budget`, `template_data_json` | Pre-built multi-city itinerary templates |
-| `trips` | `id` (TEXT) | `user_id` (FK `users.id`), `title`, `start_date`, `end_date`, `estimated_budget`, `status`, `visibility`, `public_slug` | Core trip entities |
-| `trip_stops` | `id` (TEXT) | `trip_id` (FK `trips.id`), `city_id` (FK `cities.id`), `stop_order`, `arrival_date`, `departure_date` | Multi-city stops within a trip |
-| `trip_activities` | `id` (TEXT) | `trip_id` (FK `trips.id`), `trip_stop_id` (FK `trip_stops.id`), `activity_id` (FK `activities.id`), `day_number`, `custom_title`, `cost`, `activity_order`, `is_completed` | Scheduled itinerary items |
-| `accommodations` | `id` (TEXT) | `trip_id` (FK `trips.id`), `trip_stop_id` (FK `trip_stops.id`), `name`, `check_in`, `check_out`, `total_cost` | Hotel / stay bookings per stop |
-| `transportation` | `id` (TEXT) | `trip_id` (FK `trips.id`), `mode`, `departure_time`, `arrival_time`, `cost` | Inter-city or local transit entries |
-| `expenses` | `id` (TEXT) | `trip_id` (FK `trips.id`), `user_id` (FK `users.id`), `category`, `amount`, `date`, `paid_by_name` | Actual logged expenses |
-| `trip_members` | `id` (TEXT) | `trip_id` (FK `trips.id`), `user_id`, `email`, `role` (`Owner` \| `Editor` \| `Viewer`), `status` | Co-travelers & access permissions |
-| `comments` | `id` (TEXT) | `trip_id` (FK `trips.id`), `user_id` (FK `users.id`), `activity_id`, `content` | Trip discussion board messages |
-| `activity_votes` | `id` (TEXT) | `trip_activity_id` (FK `trip_activities.id`), `user_id` (FK `users.id`), `vote_type` (`up` \| `down`) | Upvoting/downvoting activities in group trips |
-| `achievements` | `id` (TEXT) | `code` (UNIQUE), `title`, `description`, `icon`, `badge_color` | Gamification achievement badges |
-| `user_achievements` | `id` (TEXT) | `user_id` (FK `users.id`), `achievement_id` (FK `achievements.id`) | Gamification user unlocks |
-| `saved_destinations` | `id` (TEXT) | `user_id` (FK `users.id`), `city_id` (FK `cities.id`) | User saved city wishlist |
-| `notifications` | `id` (TEXT) | `user_id` (FK `users.id`), `title`, `message`, `type`, `is_read`, `link_url` | System and trip alert notifications |
+| `users` | `id` (VARCHAR) | `email` (UNIQUE), `password_hash`, `full_name`, `role` (`user` \| `admin`), `currency` | User account authentication & preferences |
+| `profiles` | `id` (VARCHAR) | `user_id` (FK `users.id`), `bio`, `home_city`, `home_country`, `is_public` | Extended user bio & public preferences |
+| `countries` | `id` (VARCHAR) | `name` (UNIQUE), `code` (UNIQUE), `currency`, `region` | Country reference catalog |
+| `cities` | `id` (VARCHAR) | `country_id` (FK `countries.id`), `name`, `image_url`, `popularity_score`, `avg_daily_cost`, `latitude`, `longitude` | City destinations catalog |
+| `activities` | `id` (VARCHAR) | `city_id` (FK `cities.id`), `name`, `category`, `duration_minutes`, `estimated_cost`, `rating` | Activity catalog per city |
+| `trip_templates` | `id` (VARCHAR) | `title`, `category`, `cover_image`, `duration_days`, `estimated_budget`, `template_data_json` | Pre-built multi-city itinerary templates |
+| `trips` | `id` (VARCHAR) | `user_id` (FK `users.id`), `title`, `start_date`, `end_date`, `estimated_budget`, `status`, `visibility`, `public_slug` | Core trip entities |
+| `trip_stops` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `city_id` (FK `cities.id`), `stop_order`, `arrival_date`, `departure_date` | Multi-city stops within a trip |
+| `trip_activities` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `trip_stop_id` (FK `trip_stops.id`), `activity_id` (FK `activities.id`), `day_number`, `custom_title`, `cost`, `activity_order`, `is_completed` | Scheduled itinerary items |
+| `accommodations` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `trip_stop_id` (FK `trip_stops.id`), `name`, `check_in`, `check_out`, `total_cost` | Hotel / stay bookings per stop |
+| `transportation` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `mode`, `departure_time`, `arrival_time`, `cost` | Inter-city or local transit entries |
+| `expenses` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `user_id` (FK `users.id`), `category`, `amount`, `date`, `paid_by_name` | Actual logged expenses |
+| `trip_members` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `user_id`, `email`, `role` (`Owner` \| `Editor` \| `Viewer`), `status` | Co-travelers & access permissions |
+| `comments` | `id` (VARCHAR) | `trip_id` (FK `trips.id`), `user_id` (FK `users.id`), `activity_id`, `content` | Trip discussion board messages |
+| `activity_votes` | `id` (VARCHAR) | `trip_activity_id` (FK `trip_activities.id`), `user_id` (FK `users.id`), `vote_type` (`up` \| `down`) | Upvoting/downvoting activities in group trips |
+| `achievements` | `id` (VARCHAR) | `code` (UNIQUE), `title`, `description`, `icon`, `badge_color` | Gamification achievement badges |
+| `user_achievements` | `id` (VARCHAR) | `user_id` (FK `users.id`), `achievement_id` (FK `achievements.id`) | Gamification user unlocks |
+| `saved_destinations` | `id` (VARCHAR) | `user_id` (FK `users.id`), `city_id` (FK `cities.id`) | User saved city wishlist |
+| `notifications` | `id` (VARCHAR) | `user_id` (FK `users.id`), `title`, `message`, `type`, `is_read`, `link_url` | System and trip alert notifications |
 
 ---
 
-## 7. How to Run the Application Locally
-
-### Prerequisites
-- Node.js (v18 or higher) & `npm`
+## 6. How to Run the Application Locally
 
 ### Step 1: Start Backend Server
 ```bash
 cd backend
-npm install        # Install backend packages if needed
-npm run dev        # Starts TypeScript server on http://localhost:5000
+npm install        # Installs pg and backend dependencies
+npm run db:seed    # Optional: Initial database seeding into Neon PostgreSQL
+npm run dev        # Starts server on http://localhost:5000
 ```
-*Note: Upon startup, `initDatabase()` auto-checks database schema and initializes seed data if required.*
 
 ### Step 2: Start Frontend Development Server
 ```bash
 cd frontend
-npm install        # Install frontend packages if needed
+npm install        # Installs frontend dependencies
 npm run dev        # Starts Next.js server on http://localhost:3000
 ```
-
----
-
-## 8. Guidelines for AI Agents
-
-1. **Context Inspection**: When modifying any feature, check this document to trace the exact **Page Route** $\rightarrow$ **API Endpoint** $\rightarrow$ **Database Table** relationship.
-2. **Schema Integrity**: Any SQL queries modified in `backend/src/routes/` MUST conform to the schema defined in `backend/src/db/db.ts`.
-3. **Authentication**: All protected backend routes expect the `Authorization: Bearer <token>` header, handled by `authenticateToken` in `backend/src/middleware/auth.ts`.
-4. **Updating `system.md`**: Whenever a new endpoint, database column, or frontend page is created, immediately update this `system.md` file to keep context synchronized for all future AI agent sessions.
