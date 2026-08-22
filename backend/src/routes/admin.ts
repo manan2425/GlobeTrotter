@@ -1,12 +1,12 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../db/db';
-import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-// GET /api/admin/dashboard
-router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+// GET /api/admin/dashboard (Public / Optional Token)
+router.get('/dashboard', async (req: Request, res: Response, next) => {
   try {
     const usersCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM users').get()) || { cnt: 0 };
     const tripsCount: any = (await db.prepare('SELECT COUNT(*) as cnt FROM trips').get()) || { cnt: 0 };
@@ -74,7 +74,7 @@ router.get('/dashboard', authenticateToken, async (req: AuthRequest, res: Respon
    ========================================================================== */
 
 // GET /api/admin/users
-router.get('/users', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+router.get('/users', async (req: Request, res: Response, next) => {
   try {
     const search = req.query.search as string;
     let query = `
@@ -188,7 +188,7 @@ router.delete('/users/:id', authenticateToken, async (req: AuthRequest, res: Res
    ========================================================================== */
 
 // GET /api/admin/trips
-router.get('/trips', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+router.get('/trips', async (req: Request, res: Response, next) => {
   try {
     const search = req.query.search as string;
     let query = `
@@ -424,7 +424,7 @@ router.delete('/activities/:id', authenticateToken, async (req: AuthRequest, res
    ========================================================================== */
 
 // GET /api/admin/templates
-router.get('/templates', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+router.get('/templates', async (req: Request, res: Response, next) => {
   try {
     const templates = await db.prepare('SELECT * FROM trip_templates').all();
     return res.json(templates);
@@ -497,7 +497,7 @@ router.delete('/templates/:id', authenticateToken, async (req: AuthRequest, res:
    ========================================================================== */
 
 // GET /api/admin/countries
-router.get('/countries', authenticateToken, async (req: AuthRequest, res: Response, next) => {
+router.get('/countries', async (req: Request, res: Response, next) => {
   try {
     const countries = await db.prepare('SELECT * FROM countries').all();
     return res.json(countries);
