@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Sparkles, Send, Bot, User, X, ArrowRight } from 'lucide-react';
 import { apiRequest } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -13,6 +14,7 @@ interface Message {
 }
 
 export default function AIAssistantModal({ tripId, isOpen, onClose }: { tripId?: string; isOpen: boolean; onClose: () => void }) {
+  const router = useRouter();
   const [promptInput, setPromptInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -55,6 +57,31 @@ export default function AIAssistantModal({ tripId, isOpen, onClose }: { tripId?:
       toast.error(err.message || 'AI request failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExecuteAction = async (act: any) => {
+    if (act.action === 'create_trip') {
+      try {
+        const res = await apiRequest<{ id: string }>('/trips', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: act.data.title || 'AI Recommended Trip',
+            description: 'AI Generated multi-city itinerary package.',
+            start_date: new Date().toISOString().split('T')[0],
+            end_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+            estimated_budget: act.data.budget || 25000,
+            initial_cities: act.data.cities || ['city_udaipur', 'city_jodhpur', 'city_jaipur']
+          })
+        });
+        toast.success(`Created trip: ${act.data.title}! Redirecting...`);
+        onClose();
+        router.push(`/trips/${res.id}/builder`);
+      } catch (err: any) {
+        toast.error('Failed to create trip from AI recommendation');
+      }
+    } else {
+      toast.success('AI recommendation applied to itinerary!');
     }
   };
 
@@ -108,7 +135,7 @@ export default function AIAssistantModal({ tripId, isOpen, onClose }: { tripId?:
                     {m.suggested_actions.map((act, aIdx) => (
                       <Button
                         key={aIdx}
-                        onClick={() => toast.success('AI recommendation applied to itinerary!')}
+                        onClick={() => handleExecuteAction(act)}
                         variant="default"
                         size="sm"
                         className="justify-between text-xs font-bold"
